@@ -1,0 +1,23 @@
+{
+  "name": "doctor-clinic-app",
+  "version": "1.1.0",
+  "description": "All-in-One Doctor Clinic Management App - Web & Mobile",
+  "private": true,
+  "workspaces": ["backend", "web", "mobile"],
+  "scripts": {
+    "backend": "npm --prefix backend run dev",
+    "web": "npm --prefix web run dev",
+    "mobile": "npm --prefix mobile run start",
+    "install:all": "npm install && npm --prefix backend install && npm --prefix web install && npm --prefix mobile install",
+    "dev": "concurrently -n backend,web -c blue,green \"npm:backend\" \"npm:web\"",
+    "lint": "npm --prefix backend run lint",
+    "build:web": "npm --prefix web run build",
+    "seed": "npm --prefix backend run seed",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "env": { "browser": true, "es2022": true, "node": true },
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "sourceType": "module",
+    "ecmaFeatures": { "jsx": true }
+  },
+  "settings": { "react": { "version": "18.2" } },
+  "globals": { "JSX": "readonly" },
+  "rules": {
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_", "varsIgnorePattern": "^(React|_)" }]
+  }
+}

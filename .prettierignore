@@ -1,0 +1,10 @@
+node_modules
+dist
+build
+coverage
+.expo
+android
+ios
+uploads
+*.lock
+package-lock.json
