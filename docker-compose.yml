@@ -1,17 +1,12 @@
 services:
   mongo:
-    image: mongo:7
-    container_name: docclinic-mongo
+    image: ghcr.io/ferretdb/ferretdb:1
+    container_name: docclinic-ferretdb
     restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
     ports:
       - "27017:27017"
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+    environment:
+      - FERRETDB_POSTGRESQL_URL=postgresql://neondb_owner:npg_fqJwFyueI1x8@ep-sparkling-resonance-ap5f5lec-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
 
   backend:
     build:
@@ -19,12 +14,11 @@ services:
     container_name: docclinic-api
     restart: unless-stopped
     depends_on:
-      mongo:
-        condition: service_healthy
+      - mongo
     environment:
       NODE_ENV: production
       PORT: 5000
-      MONGODB_URI: mongodb://mongo:27017/doctor-clinic
+      MONGODB_URI: mongodb://neondb_owner:npg_fqJwFyueI1x8@mongo:27017/neondb?authMechanism=PLAIN
       JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
       JWT_EXPIRY: ${JWT_EXPIRY:-30d}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
@@ -40,5 +34,4 @@ services:
       - "5000:5000"
 
 volumes:
-  mongo_data:
   backend_uploads:

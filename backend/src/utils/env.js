@@ -11,6 +11,20 @@ const PRODUCTION_REQUIRED = [
 const SECURITY_WARNINGS = [];
 
 function validateEnv() {
+  const pgUrlStr = process.env.NEON_DATABASE_URL || process.env.DATABASE_URL;
+  if (!process.env.MONGODB_URI && pgUrlStr) {
+    try {
+      const pgUrl = new URL(pgUrlStr);
+      const username = pgUrl.username;
+      const password = pgUrl.password;
+      const dbname = pgUrl.pathname.replace(/^\//, '') || 'neondb';
+      const dbHost = process.env.IS_DOCKER === 'true' ? 'mongo' : '127.0.0.1';
+      process.env.MONGODB_URI = `mongodb://${username}:${password}@${dbHost}:27017/${dbname}?authMechanism=PLAIN`;
+    } catch (err) {
+      logger.warn(`Could not parse database connection URL: ${err.message}`);
+    }
+  }
+
   const missing = REQUIRED.filter((key) => !process.env[key]);
   const isProduction = process.env.NODE_ENV === 'production';
 

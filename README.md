@@ -22,14 +22,14 @@ Dermatologist, ENT, Cardiology, Gynecology.
 
 | Layer | Technology |
 |---|---|
-| Backend | Node.js 20, Express 4, MongoDB 7, Mongoose 7 |
-| Security | helmet, express-rate-limit, express-mongo-sanitize, validator |
+| Backend | Node.js 20, Express 4, PostgreSQL (NeonDB) via FerretDB Proxy |
+| Security | helmet, express-rate-limit, validator |
 | Web | React 18, Vite 5, Tailwind 3, react-router 6, chart.js 4 |
 | Mobile | React Native (Expo 49), React Navigation |
 | Auth | JWT + bcrypt |
 | Messaging | Twilio WhatsApp Business API |
 | Logging | winston + morgan |
-| DevOps | Docker, docker-compose, GitHub Actions |
+| DevOps | Docker, FerretDB, PostgreSQL, docker-compose, GitHub Actions |
 
 ## Project Structure
 
@@ -38,7 +38,7 @@ Medicalapp/
 ├── backend/                  # Node.js API
 │   ├── src/
 │   │   ├── middleware/       # auth, role, errorHandler
-│   │   ├── models/           # Mongoose models + Counter (atomic IDs)
+│   │   ├── models/           # Mongoose schemas (backed by Neon PostgreSQL via FerretDB)
 │   │   ├── routes/           # auth, patients, appointments, prescriptions, billing,
 │   │   │                     # dashboard, whatsapp, medicines, uploads
 │   │   ├── services/         # whatsappService (Twilio + stub fallback)
@@ -69,7 +69,7 @@ npm run install:all
 
 # 2. Configure backend env
 cp backend/.env.example backend/.env
-# edit MONGODB_URI, JWT_SECRET, (optional) TWILIO_*, ALLOWED_ORIGINS
+# edit MONGODB_URI (FerretDB wrapper URI), NEON_DATABASE_URL (direct PostgreSQL), JWT_SECRET, etc.
 
 # 3. Start backend + web together
 npm run dev
@@ -87,7 +87,7 @@ npx expo start
 
 ## Demo data (one command)
 
-After the backend is configured and MongoDB is running:
+After the backend is configured and FerretDB (or the Docker services) is running:
 
 ```bash
 npm run seed                # creates demo doctor + sample data
@@ -108,7 +108,7 @@ export JWT_SECRET=$(openssl rand -hex 32)
 
 docker compose up -d --build
 # Backend: http://localhost:5000/api/health
-# MongoDB: localhost:27017 (data persisted in named volume)
+# FerretDB (Proxy to Neon PostgreSQL): localhost:27017
 ```
 
 ## Environment Variables (backend)
@@ -117,7 +117,8 @@ docker compose up -d --build
 |---|---|---|---|
 | `NODE_ENV` | no | `development` | |
 | `PORT` | no | `5000` | |
-| `MONGODB_URI` | **yes** | — | |
+| `MONGODB_URI` | **yes** | — | MongoDB protocol string for FerretDB proxy |
+| `NEON_DATABASE_URL` | **yes** | — | Direct Neon PostgreSQL connection string |
 | `JWT_SECRET` | **yes** | — | Use a long random string in production |
 | `JWT_EXPIRY` | no | `30d` | |
 | `ALLOWED_ORIGINS` | no | `http://localhost:3000` | Comma-separated origin allowlist |

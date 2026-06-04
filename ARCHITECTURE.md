@@ -10,7 +10,7 @@ This is a comprehensive AI-powered healthcare platform built on top of the exist
 
 | Layer | Technology |
 |-------|-----------|
-| Backend | Node.js, Express.js, MongoDB/Mongoose |
+| Backend | Node.js, Express.js, PostgreSQL (NeonDB) via FerretDB / Mongoose |
 | Frontend (Web) | React 18, Vite, TailwindCSS, React Router v6 |
 | Frontend (Mobile) | React Native, Expo |
 | AI/ML | OpenAI GPT-4o / Google Gemini 1.5 Pro (with demo fallback) |
@@ -88,9 +88,9 @@ This is a comprehensive AI-powered healthcare platform built on top of the exist
           v
 +--------------------------------------------------+
 |                 DATA LAYER                        |
-|  MongoDB with Mongoose ODM                        |
+|  PostgreSQL (NeonDB) via FerretDB & Mongoose ODM  |
 |                                                   |
-|  Collections (25+):                              |
+|  Tables/Collections (25+):                        |
 |  Users, Patients, Appointments, Prescriptions,   |
 |  Billing, LabTests, Medicines, Expenses,         |
 |  Reviews, HealthRecords, HealthTimeline,         |
@@ -283,7 +283,7 @@ GEMINI_MODEL=gemini-1.5-pro
 4. **RBAC** - Doctor/Staff/Admin roles with branch-level permissions
 5. **AI Safety** - All AI responses include disclaimers, flagging system for chat
 6. **Rate Limiting** - API-level rate limiting (300 req/15min default)
-7. **Input Sanitization** - MongoDB query injection prevention via express-mongo-sanitize
+7. **Input Sanitization** - Input validation, escaping, and secure query mapping to PostgreSQL
 
 ---
 
