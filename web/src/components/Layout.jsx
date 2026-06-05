@@ -7,8 +7,8 @@ import {
   FiBarChart2, FiCreditCard, FiBell, FiGlobe,
   FiHeart, FiUserPlus, FiClock, FiShield, FiMessageCircle,
   FiCpu, FiMic, FiEdit3, FiAlertTriangle,
-  FiAward, FiGift, FiSend, FiStar,
-  FiMapPin, FiDatabase, FiTrendingUp
+  FiAward, FiGift, FiSend, FiStar, FiTrendingUp,
+  FiMapPin, FiDatabase
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
 import { useDarkMode } from '../hooks/useDarkMode';
@@ -19,6 +19,8 @@ const navGroups = [
     label: 'Overview',
     items: [
       { path: '/', icon: FiHome, label: 'Dashboard', end: true },
+      { path: '/visit-pad', icon: FiActivity, label: 'Visit Pad', highlight: true },
+      { path: '/opd-queue', icon: FiStar, label: 'OPD Queue' },
     ]
   },
   {
@@ -29,6 +31,7 @@ const navGroups = [
       { path: '/prescriptions', icon: FiFileText, label: 'Prescriptions' },
       { path: '/medicines', icon: FiPackage, label: 'Medicines' },
       { path: '/lab-tests', icon: FiActivity, label: 'Lab Tests' },
+      { path: '/patient-insights', icon: FiTrendingUp, label: 'Patient Insights' },
     ]
   },
   {

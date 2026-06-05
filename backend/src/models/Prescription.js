@@ -21,6 +21,10 @@ const prescriptionSchema = new mongoose.Schema(
     prescriptionNo: { type: String, index: true },
     diagnosis: { type: String },
     symptoms: [{ type: String }],
+    chiefComplaints: [{ type: String }],
+    visitType: { type: String, enum: ['consultation', 'follow-up', 'procedure', 'emergency', 'telemedicine'], default: 'consultation' },
+    specialty: { type: String },
+    clinicalNotes: { type: String },
     medicines: [medicineSchema],
     tests: [{ type: String }],
     advice: { type: String },
@@ -31,7 +35,8 @@ const prescriptionSchema = new mongoose.Schema(
       temperature: { type: Number },
       weight: { type: Number },
       height: { type: Number },
-      spo2: { type: Number }
+      spo2: { type: Number },
+      rbs: { type: Number }
     },
     isTemplate: { type: Boolean, default: false },
     templateName: { type: String }

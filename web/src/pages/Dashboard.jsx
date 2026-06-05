@@ -300,6 +300,15 @@ export default function Dashboard() {
           <div className="card animate-fade-up" style={{ animationDelay: '400ms' }}>
             <h3 className="text-base font-semibold text-gray-900 mb-4">Quick Actions</h3>
             <div className="grid grid-cols-2 gap-2.5">
+              <Link to="/visit-pad" className="quick-action-btn card-3d-left col-span-2 !flex-row !py-3 !px-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-200">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center icon-3d">
+                  <FiActivity className="text-white text-sm" />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-bold text-teal-700">Visit Pad</span>
+                  <p className="text-[10px] text-teal-500">Complete visit in 30s</p>
+                </div>
+              </Link>
               <Link to="/patients" className="quick-action-btn card-3d-left">
                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center icon-3d">
                   <FiUserPlus className="text-white text-sm" />
