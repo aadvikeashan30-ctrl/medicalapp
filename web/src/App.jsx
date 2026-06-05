@@ -36,6 +36,10 @@ import Campaigns from './pages/Campaigns';
 import Referrals from './pages/Referrals';
 import AuditLogs from './pages/AuditLogs';
 import BranchManagement from './pages/BranchManagement';
+// Healthplix-inspired features
+import VisitPad from './pages/VisitPad';
+import PatientInsights from './pages/PatientInsights';
+import OPDQueueDisplay from './pages/OPDQueueDisplay';
 import Layout from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
@@ -136,6 +140,10 @@ export default function App() {
           <Route path="referrals" element={<Referrals />} />
           <Route path="audit-logs" element={<AuditLogs />} />
           <Route path="branches" element={<BranchManagement />} />
+          {/* Healthplix-inspired features */}
+          <Route path="visit-pad" element={<VisitPad />} />
+          <Route path="patient-insights" element={<PatientInsights />} />
+          <Route path="opd-queue" element={<OPDQueueDisplay />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>
