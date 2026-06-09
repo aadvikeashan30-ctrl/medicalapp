@@ -31,6 +31,8 @@ import ClinicalDecisionSupport from './pages/ClinicalDecisionSupport';
 import EMRTemplates from './pages/EMRTemplates';
 import ESignaturePage from './pages/ESignature';
 import MedicalCertificates from './pages/MedicalCertificates';
+import DoctorAvailability from './pages/DoctorAvailability';
+import PracticeAnalytics from './pages/PracticeAnalytics';
 import Memberships from './pages/Memberships';
 import HealthPackages from './pages/HealthPackages';
 import Campaigns from './pages/Campaigns';
@@ -138,6 +140,8 @@ export default function App() {
           <Route path="emr-templates" element={<EMRTemplates />} />
           <Route path="e-signature" element={<ESignaturePage />} />
           <Route path="certificates" element={<MedicalCertificates />} />
+          <Route path="availability" element={<DoctorAvailability />} />
+          <Route path="practice-analytics" element={<PracticeAnalytics />} />
           <Route path="memberships" element={<Memberships />} />
           <Route path="health-packages" element={<HealthPackages />} />
           <Route path="campaigns" element={<Campaigns />} />

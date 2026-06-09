@@ -327,6 +327,46 @@ router.get('/dashboard/analytics', demoOnly, (req, res) => {
   });
 });
 
+// ==================== DOCTOR PRACTICE ANALYTICS ====================
+router.get('/dashboard/practice', demoOnly, (req, res) => {
+  res.json({
+    periodDays: 90,
+    totals: { appointments: 142, prescriptions: 118 },
+    appointmentMetrics: {
+      completed: 112, noShow: 11, cancelled: 8,
+      completionRate: 79, noShowRate: 8, cancellationRate: 6
+    },
+    appointmentTypes: [
+      { type: 'consultation', count: 78 },
+      { type: 'follow-up', count: 41 },
+      { type: 'checkup', count: 15 },
+      { type: 'procedure', count: 8 }
+    ],
+    peakHours: [
+      { slot: '10:00 AM', count: 22 },
+      { slot: '10:30 AM', count: 19 },
+      { slot: '11:00 AM', count: 17 },
+      { slot: '09:30 AM', count: 14 },
+      { slot: '12:00 PM', count: 11 },
+      { slot: '05:00 PM', count: 9 }
+    ],
+    topDiagnoses: [
+      { diagnosis: 'hypertension', count: 24 },
+      { diagnosis: 'type 2 diabetes', count: 19 },
+      { diagnosis: 'viral fever', count: 16 },
+      { diagnosis: 'upper respiratory infection', count: 12 },
+      { diagnosis: 'gastritis', count: 9 }
+    ],
+    topMedicines: [
+      { medicine: 'paracetamol', count: 41 },
+      { medicine: 'amlodipine', count: 27 },
+      { medicine: 'metformin', count: 22 },
+      { medicine: 'atorvastatin', count: 18 },
+      { medicine: 'pantoprazole', count: 14 }
+    ]
+  });
+});
+
 // ==================== PATIENTS ====================
 router.get('/patients', demoOnly, (req, res) => {
   let list = [...DEMO_PATIENTS];
@@ -854,6 +894,100 @@ router.get('/portal/track/:id', demoOnly, (req, res) => {
     doctor: { _id: 'demo-doctor-001', name: 'Demo Doctor', specialty: 'general', clinicName: 'DocClinic Demo Centre', workingHours: { start: '09:00', end: '18:00' } },
     patient: { name: apt.patientId?.name || 'Patient', phone: '9876543213' },
     queue: { totalToday: 5, completed: 2, currentToken: 3, myToken: apt.tokenNumber, myPosition: 4, patientsAhead: 1, estimatedWaitMinutes: 15 }
+  });
+});
+
+// ==================== DOCTOR AVAILABILITY / LEAVE ====================
+const DEMO_AVAILABILITY = [
+  { _id: 'av-1', type: 'full-day', startDate: new Date(Date.now() + 3 * 86400000).toISOString(), endDate: new Date(Date.now() + 4 * 86400000).toISOString(), reason: 'conference', note: 'Annual Cardiology Summit' },
+  { _id: 'av-2', type: 'slot', startDate: new Date(Date.now() + 86400000).toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), startTime: '13:00', endTime: '14:00', reason: 'break', note: 'Lunch break' }
+];
+
+router.get('/availability', demoOnly, (req, res) => {
+  res.json({ blocks: DEMO_AVAILABILITY, total: DEMO_AVAILABILITY.length });
+});
+
+router.get('/availability/check', demoOnly, (req, res) => {
+  res.json({ blocked: false, block: null });
+});
+
+router.post('/availability', demoOnly, (req, res) => {
+  const type = req.body.type || 'full-day';
+  const startDate = new Date(req.body.startDate);
+  const endDate = type === 'slot' ? new Date(req.body.startDate) : new Date(req.body.endDate || req.body.startDate);
+  const block = {
+    _id: `av-${Date.now()}`,
+    type,
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+    startTime: req.body.startTime,
+    endTime: req.body.endTime,
+    reason: req.body.reason || 'leave',
+    note: req.body.note
+  };
+  DEMO_AVAILABILITY.unshift(block);
+  res.status(201).json({ block, affectedAppointments: 0 });
+});
+
+router.put('/availability/:id', demoOnly, (req, res) => {
+  const block = DEMO_AVAILABILITY.find((b) => b._id === req.params.id);
+  if (!block) return res.status(404).json({ message: 'Block not found' });
+  Object.assign(block, req.body);
+  res.json(block);
+});
+
+router.delete('/availability/:id', demoOnly, (req, res) => {
+  const idx = DEMO_AVAILABILITY.findIndex((b) => b._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Block not found' });
+  DEMO_AVAILABILITY.splice(idx, 1);
+  res.json({ message: 'Availability block removed' });
+});
+
+// ==================== DOCTOR AI (risk / schedule / notes) ====================
+router.post('/doctor/patient-risk', demoOnly, (req, res) => {
+  const patient = DEMO_PATIENTS.find((p) => p._id === req.body.patientId) || DEMO_PATIENTS[0];
+  res.json({
+    patient: { _id: patient._id, name: patient.name, patientId: patient.patientId },
+    historicalNoShows: 1,
+    totalAppointments: patient.totalVisits || 4,
+    riskScore: patient.age > 50 ? 7 : 5,
+    riskLevel: patient.age > 50 ? 'high' : 'moderate',
+    factors: [
+      patient.age > 45 ? 'Age above 45' : 'Generally healthy age group',
+      (patient.allergies || []).length ? `Known allergy: ${patient.allergies.join(', ')}` : 'No known allergies',
+      'Occasional missed follow-ups'
+    ],
+    recommendations: ['Schedule periodic reviews', 'Monitor vitals at each visit', 'Send SMS reminders before appointments'],
+    predictedNoShowProbability: 15,
+    suggestedFollowUp: '2 weeks',
+    disclaimer: 'AI risk assessment is for reference only. Clinical judgment should always take precedence.'
+  });
+});
+
+router.post('/doctor/optimize-schedule', demoOnly, (req, res) => {
+  res.json({
+    date: req.body.date || new Date().toISOString(),
+    appointmentCount: DEMO_APPOINTMENTS.length,
+    insights: { predictedLoad: 20, peakHours: ['10:00-12:00'], suggestedBreaks: ['13:00-14:00'], noShowRisk: ['Token #4'] },
+    optimizations: ['Move follow-ups to the afternoon (3-5 PM)', 'Keep 2 emergency buffer slots at 10:30 & 2:30', 'Group similar procedures together to reduce setup time'],
+    suggestedSlots: { emergencyBuffer: ['10:30 AM', '02:30 PM'], followUps: ['03:00 PM', '04:00 PM'], newPatients: ['09:00 AM', '09:30 AM'] }
+  });
+});
+
+router.post('/doctor/summarize-notes', demoOnly, (req, res) => {
+  res.json({
+    soap: {
+      subjective: 'Patient reports ' + (req.body.text ? req.body.text.slice(0, 120) : 'presenting symptoms'),
+      objective: 'Vitals within normal limits, no acute distress noted',
+      assessment: 'Condition stable and improving',
+      plan: 'Continue current medications, follow up in 1 week, return earlier if symptoms worsen'
+    },
+    icd10Suggestions: [
+      { code: 'J06.9', description: 'Acute upper respiratory infection, unspecified' },
+      { code: 'R50.9', description: 'Fever, unspecified' }
+    ],
+    keyFindings: ['No red flag symptoms', 'Responding to current treatment'],
+    followUpSuggested: '7 days'
   });
 });
 

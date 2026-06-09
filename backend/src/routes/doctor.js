@@ -184,6 +184,111 @@ router.post(
   })
 );
 
+// ========== AI PATIENT RISK ASSESSMENT ==========
+
+// Assess a patient's clinical risk + no-show probability using their real data
+router.post(
+  '/patient-risk',
+  auth,
+  asyncHandler(async (req, res) => {
+    const { patientId } = req.body;
+    if (!patientId) return res.status(400).json({ message: 'patientId is required' });
+
+    const Patient = require('../models/Patient');
+    const Appointment = require('../models/Appointment');
+    const aiService = require('../services/aiService');
+
+    const patient = await Patient.findOne({ _id: patientId, doctorId: req.user._id });
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+
+    // Gather visit history + no-show count for richer context
+    const appts = await Appointment.find({ patientId, doctorId: req.user._id })
+      .sort({ date: -1 })
+      .limit(30)
+      .select('status date type diagnosis');
+
+    const noShows = appts.filter((a) => a.status === 'no-show').length;
+    const conditions = [...(patient.medicalHistory || [])].filter(Boolean);
+
+    const assessment = await aiService.assessPatientRisk({
+      patient: {
+        age: patient.age,
+        gender: patient.gender,
+        bloodGroup: patient.bloodGroup,
+        allergies: patient.allergies,
+        medicalHistory: patient.medicalHistory,
+        totalVisits: patient.totalVisits,
+        noShowCount: noShows
+      },
+      visits: appts.length,
+      conditions
+    });
+
+    res.json({
+      patient: { _id: patient._id, name: patient.name, patientId: patient.patientId },
+      historicalNoShows: noShows,
+      totalAppointments: appts.length,
+      ...assessment,
+      disclaimer: 'AI risk assessment is for reference only. Clinical judgment should always take precedence.'
+    });
+  })
+);
+
+// ========== AI SCHEDULE OPTIMIZER ==========
+
+// Analyze a given day's appointments and return scheduling insights
+router.post(
+  '/optimize-schedule',
+  auth,
+  asyncHandler(async (req, res) => {
+    const Appointment = require('../models/Appointment');
+    const aiService = require('../services/aiService');
+
+    const target = req.body.date ? new Date(req.body.date) : new Date();
+    if (Number.isNaN(target.getTime())) return res.status(400).json({ message: 'Invalid date' });
+    const dayStart = new Date(target); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const appts = await Appointment.find({
+      doctorId: req.user._id,
+      date: { $gte: dayStart, $lt: dayEnd }
+    })
+      .populate('patientId', 'name')
+      .sort({ timeSlot: 1 })
+      .select('timeSlot duration type status patientId');
+
+    const insights = await aiService.optimizeSchedule({
+      appointments: appts.map((a) => ({
+        timeSlot: a.timeSlot,
+        duration: a.duration,
+        type: a.type,
+        status: a.status,
+        patient: a.patientId?.name
+      })),
+      workingHours: req.user.workingHours || { start: '09:00', end: '18:00' },
+      historicalData: req.body.historicalData
+    });
+
+    res.json({ date: dayStart, appointmentCount: appts.length, ...insights });
+  })
+);
+
+// ========== AI CLINICAL NOTE SUMMARIZER ==========
+
+// Convert free-text / voice notes into a structured SOAP summary with ICD-10
+router.post(
+  '/summarize-notes',
+  auth,
+  asyncHandler(async (req, res) => {
+    const { text, type } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ message: 'Note text is required' });
+
+    const aiService = require('../services/aiService');
+    const summary = await aiService.summarizeNotes({ text, type });
+    res.json(summary);
+  })
+);
+
 // ========== EMR TEMPLATES ==========
 
 // List templates for doctor's specialty

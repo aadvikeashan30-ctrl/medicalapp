@@ -110,4 +110,88 @@ router.get(
   })
 );
 
+// ── Doctor Practice Insights ──────────────────────────────────────
+// Top diagnoses, prescribing patterns, no-show rate, peak hours, type mix
+router.get(
+  '/practice',
+  auth,
+  asyncHandler(async (req, res) => {
+    const Prescription = require('../models/Prescription');
+    const doctorId = req.user._id;
+
+    const days = parseInt(req.query.days, 10) || 90;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const [
+      apptAgg,
+      typeAgg,
+      hourAgg,
+      diagAgg,
+      medsAgg,
+      totalRx
+    ] = await Promise.all([
+      // Appointment status counts (for completion / no-show rates)
+      Appointment.aggregate([
+        { $match: { doctorId, date: { $gte: since } } },
+        { $group: { _id: '$status', count: { $sum: 1 } } }
+      ]),
+      // Appointment type distribution
+      Appointment.aggregate([
+        { $match: { doctorId, date: { $gte: since } } },
+        { $group: { _id: '$type', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]),
+      // Peak booking hours (parsed from timeSlot like "10:00 AM")
+      Appointment.aggregate([
+        { $match: { doctorId, date: { $gte: since }, timeSlot: { $exists: true, $ne: null } } },
+        { $group: { _id: '$timeSlot', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 8 }
+      ]),
+      // Top diagnoses from prescriptions
+      Prescription.aggregate([
+        { $match: { doctorId, isTemplate: { $ne: true }, diagnosis: { $exists: true, $ne: '' }, createdAt: { $gte: since } } },
+        { $group: { _id: { $toLower: '$diagnosis' }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      // Top prescribed medicines
+      Prescription.aggregate([
+        { $match: { doctorId, isTemplate: { $ne: true }, createdAt: { $gte: since } } },
+        { $unwind: '$medicines' },
+        { $group: { _id: { $toLower: '$medicines.name' }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      Prescription.countDocuments({ doctorId, isTemplate: { $ne: true }, createdAt: { $gte: since } })
+    ]);
+
+    const statusCounts = apptAgg.reduce((acc, s) => { acc[s._id] = s.count; return acc; }, {});
+    const totalAppts = apptAgg.reduce((sum, s) => sum + s.count, 0);
+    const completed = statusCounts.completed || statusCounts.CONSULTATION_COMPLETED || 0;
+    const noShow = statusCounts['no-show'] || 0;
+    const cancelled = statusCounts.cancelled || 0;
+
+    const pct = (n) => (totalAppts ? Math.round((n / totalAppts) * 100) : 0);
+
+    res.json({
+      periodDays: days,
+      totals: { appointments: totalAppts, prescriptions: totalRx },
+      appointmentMetrics: {
+        completed,
+        noShow,
+        cancelled,
+        completionRate: pct(completed),
+        noShowRate: pct(noShow),
+        cancellationRate: pct(cancelled)
+      },
+      appointmentTypes: typeAgg.map((t) => ({ type: t._id || 'unknown', count: t.count })),
+      peakHours: hourAgg.map((h) => ({ slot: h._id, count: h.count })),
+      topDiagnoses: diagAgg.map((d) => ({ diagnosis: d._id, count: d.count })),
+      topMedicines: medsAgg.map((m) => ({ medicine: m._id, count: m.count }))
+    });
+  })
+);
+
 module.exports = router;

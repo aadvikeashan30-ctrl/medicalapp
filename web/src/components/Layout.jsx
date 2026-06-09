@@ -38,6 +38,7 @@ const moreNavGroups = [
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
       { path: '/vaccinations',     icon: FiShield,        label: 'Vaccinations' },
       { path: '/certificates',     icon: FiAward,         label: 'Medical Certificates' },
+      { path: '/availability',     icon: FiCalendar,      label: 'Availability & Leave' },
     ]
   },
   {
@@ -56,6 +57,7 @@ const moreNavGroups = [
     items: [
       { path: '/expenses',         icon: FiCreditCard,    label: 'Expenses' },
       { path: '/reports',          icon: FiBarChart2,     label: 'Reports' },
+      { path: '/practice-analytics',icon: FiTrendingUp,   label: 'Practice Analytics' },
       { path: '/memberships',      icon: FiAward,         label: 'Memberships' },
       { path: '/health-packages',  icon: FiPackage,       label: 'Health Packages' },
       { path: '/referrals',        icon: FiGift,          label: 'Referral Program' },

@@ -126,6 +126,48 @@ export const DEMO_RESPONSES = {
     total: 2, pages: 1, page: 1
   },
   '/certificates/stats/summary': { total: 2, active: 2, sickLeave: 1, fitness: 1 },
+  '/dashboard/practice': {
+    periodDays: 90,
+    totals: { appointments: 142, prescriptions: 118 },
+    appointmentMetrics: { completed: 112, noShow: 11, cancelled: 8, completionRate: 79, noShowRate: 8, cancellationRate: 6 },
+    appointmentTypes: [
+      { type: 'consultation', count: 78 }, { type: 'follow-up', count: 41 },
+      { type: 'checkup', count: 15 }, { type: 'procedure', count: 8 }
+    ],
+    peakHours: [
+      { slot: '10:00 AM', count: 22 }, { slot: '10:30 AM', count: 19 }, { slot: '11:00 AM', count: 17 },
+      { slot: '09:30 AM', count: 14 }, { slot: '12:00 PM', count: 11 }, { slot: '05:00 PM', count: 9 }
+    ],
+    topDiagnoses: [
+      { diagnosis: 'hypertension', count: 24 }, { diagnosis: 'type 2 diabetes', count: 19 },
+      { diagnosis: 'viral fever', count: 16 }, { diagnosis: 'upper respiratory infection', count: 12 },
+      { diagnosis: 'gastritis', count: 9 }
+    ],
+    topMedicines: [
+      { medicine: 'paracetamol', count: 41 }, { medicine: 'amlodipine', count: 27 },
+      { medicine: 'metformin', count: 22 }, { medicine: 'atorvastatin', count: 18 }, { medicine: 'pantoprazole', count: 14 }
+    ]
+  },
+  '/availability': {
+    blocks: [
+      { _id: 'av-1', type: 'full-day', startDate: new Date(Date.now() + 3 * 86400000).toISOString(), endDate: new Date(Date.now() + 4 * 86400000).toISOString(), reason: 'conference', note: 'Annual Cardiology Summit' },
+      { _id: 'av-2', type: 'slot', startDate: new Date(Date.now() + 86400000).toISOString(), endDate: new Date(Date.now() + 86400000).toISOString(), startTime: '13:00', endTime: '14:00', reason: 'break', note: 'Lunch break' }
+    ],
+    total: 2
+  },
+  '/doctor/optimize-schedule': {
+    appointmentCount: 5,
+    insights: { predictedLoad: 20, peakHours: ['10:00-12:00'], suggestedBreaks: ['13:00-14:00'], noShowRisk: ['Token #4'] },
+    optimizations: ['Move follow-ups to the afternoon (3-5 PM)', 'Keep 2 emergency buffer slots at 10:30 & 2:30', 'Group similar procedures together'],
+    suggestedSlots: { emergencyBuffer: ['10:30 AM', '02:30 PM'], followUps: ['03:00 PM', '04:00 PM'], newPatients: ['09:00 AM', '09:30 AM'] }
+  },
+  '/doctor/patient-risk': {
+    riskScore: 6, riskLevel: 'moderate',
+    factors: ['Age above 45', 'Known allergy noted', 'Occasional missed follow-ups'],
+    recommendations: ['Schedule periodic reviews', 'Monitor vitals each visit', 'Send SMS reminders'],
+    predictedNoShowProbability: 15, suggestedFollowUp: '2 weeks',
+    disclaimer: 'AI risk assessment is for reference only.'
+  },
   '/whatsapp/run-reminders': { processed: 5, sent: 3, failed: 0 },
   '/whatsapp/send': { message: 'Message sent (demo mode)', sent: true },
   '/whatsapp/prescription': { message: 'Prescription shared (demo mode)', sent: true },
@@ -212,7 +254,11 @@ export function getDemoResponse(url) {
   if (cleanPath.includes('whatsapp/prescription')) return DEMO_RESPONSES['/whatsapp/prescription'];
   if (cleanPath.includes('whatsapp')) return DEMO_RESPONSES['/whatsapp/run-reminders'];
   if (cleanPath.includes('dashboard/stat')) return DEMO_RESPONSES['/dashboard/stats'];
+  if (cleanPath.includes('dashboard/practice')) return DEMO_RESPONSES['/dashboard/practice'];
   if (cleanPath.includes('dashboard/analytic')) return DEMO_RESPONSES['/dashboard/analytics'];
+  if (cleanPath.includes('availability')) return DEMO_RESPONSES['/availability'];
+  if (cleanPath.includes('doctor/optimize-schedule')) return DEMO_RESPONSES['/doctor/optimize-schedule'];
+  if (cleanPath.includes('doctor/patient-risk')) return DEMO_RESPONSES['/doctor/patient-risk'];
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];
   if (cleanPath.includes('appointment')) return DEMO_RESPONSES['/appointments'];

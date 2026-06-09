@@ -13,6 +13,7 @@ router.get(
   '/',
   auth,
   asyncHandler(async (req, res) => {
+    const { date, status, page = 1, limit = 50 } = req.query;
     const query = {};
     if (req.user.role === 'doctor') {
       query.doctorId = req.user._id;
@@ -117,6 +118,17 @@ router.post(
       return res.status(409).json({ message: 'Time slot already booked' });
     }
 
+    // Block bookings when the doctor is on leave / has blocked this slot
+    const DoctorAvailability = require('../models/DoctorAvailability');
+    const block = await DoctorAvailability.findBlock(req.user._id, apptDate, req.body.timeSlot);
+    if (block) {
+      const label = block.type === 'full-day' ? 'on leave' : 'unavailable';
+      return res.status(409).json({
+        message: `Doctor is ${label} on this date${block.note ? ` (${block.note})` : ''}. Please choose another slot.`,
+        block
+      });
+    }
+
     const appointment = await Appointment.create({ ...req.body, doctorId: req.user._id });
 
     await Patient.findByIdAndUpdate(req.body.patientId, {
@@ -175,6 +187,17 @@ router.put(
       status: { $ne: 'cancelled' }
     });
     if (conflict) return res.status(409).json({ message: 'New time slot is already booked' });
+
+    // Block reschedule onto a leave / blocked slot
+    const DoctorAvailability = require('../models/DoctorAvailability');
+    const block = await DoctorAvailability.findBlock(req.user._id, newDate, req.body.timeSlot);
+    if (block) {
+      const label = block.type === 'full-day' ? 'on leave' : 'unavailable';
+      return res.status(409).json({
+        message: `Doctor is ${label} on the selected date${block.note ? ` (${block.note})` : ''}.`,
+        block
+      });
+    }
 
     appointment.date = newDate;
     appointment.timeSlot = req.body.timeSlot;
