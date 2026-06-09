@@ -10,6 +10,7 @@ import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import ThreeDCard from '../components/ThreeDCard';
+import PatientSearchSelect from '../components/PatientSearchSelect';
 
 
 const STATUS_OPTIONS = ['ordered', 'sample-collected', 'reported', 'cancelled'];
@@ -253,10 +254,19 @@ export default function LabTests() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">{test.name}</h3>
-                    <p className="text-sm text-gray-500">
-                      {test.patientId?.name || 'Unknown Patient'}
-                      {test.category && ` • ${test.category}`}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      <span className="text-sm text-gray-500">
+                        {test.patientId?.name || 'Unknown Patient'}
+                      </span>
+                      {test.patientId?.patientId && (
+                        <span className="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                          {test.patientId.patientId}
+                        </span>
+                      )}
+                      {test.category && (
+                        <span className="text-xs text-gray-400">· {test.category}</span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {new Date(test.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
@@ -313,12 +323,13 @@ export default function LabTests() {
             <form onSubmit={handleCreate} className="p-6 space-y-4">
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Patient *</label>
-                <select value={form.patientId} onChange={(e) => setForm({ ...form, patientId: e.target.value })} className="input-field" required>
-                  <option value="">Select patient...</option>
-                  {(patients || []).map(p => (
-                    <option key={p._id} value={p._id}>{p.name}</option>
-                  ))}
-                </select>
+                <PatientSearchSelect
+                  patients={(patients?.patients || patients || [])}
+                  value={form.patientId}
+                  onChange={(id) => setForm({ ...form, patientId: id })}
+                  required
+                  placeholder="Search by name or Patient ID..."
+                />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 block">Test Name *</label>

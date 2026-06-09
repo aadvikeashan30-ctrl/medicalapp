@@ -40,6 +40,8 @@ import BranchManagement from './pages/BranchManagement';
 import VisitPad from './pages/VisitPad';
 import PatientInsights from './pages/PatientInsights';
 import OPDQueueDisplay from './pages/OPDQueueDisplay';
+import Receptionist from './pages/Receptionist';
+import Nurse from './pages/Nurse';
 import Layout from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
@@ -144,6 +146,8 @@ export default function App() {
           <Route path="visit-pad" element={<VisitPad />} />
           <Route path="patient-insights" element={<PatientInsights />} />
           <Route path="opd-queue" element={<OPDQueueDisplay />} />
+          <Route path="receptionist" element={<Receptionist />} />
+          <Route path="nurse" element={<Nurse />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

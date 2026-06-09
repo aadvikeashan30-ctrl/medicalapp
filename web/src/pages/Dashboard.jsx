@@ -1,72 +1,180 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  FiUsers, FiCalendar, FiTrendingUp, FiClock,
-  FiAlertCircle, FiUserPlus, FiActivity, FiDollarSign, FiRefreshCw,
-  FiArrowUpRight, FiCheckCircle, FiArrowUp, FiPlay, FiCheck
+  FiUsers, FiCalendar, FiClock, FiCheckCircle,
+  FiAlertCircle, FiUserPlus, FiActivity, FiDollarSign,
+  FiRefreshCw, FiArrowUpRight, FiPlay, FiCheck,
+  FiFileText, FiMonitor, FiFilter
 } from 'react-icons/fi';
-import { FaWhatsapp, FaRupeeSign } from 'react-icons/fa';
+import { FaWhatsapp, FaFlask, FaRupeeSign, FaVideo } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import { useApi } from '../hooks/useApi';
 import api from '../utils/api';
 import { getUser } from '../utils/auth';
 import Loader from '../components/Loader';
-import EmptyState from '../components/EmptyState';
-import RevenueChart from '../components/RevenueChart';
-import WelcomeHero from '../components/WelcomeHero';
 import AnimatedCounter from '../components/AnimatedCounter';
-import ProfitLossWidget from '../components/ProfitLossWidget';
-import TodayScheduleWidget from '../components/TodayScheduleWidget';
+import { useDoctorSocket } from '../hooks/useQueueSocket';
 
-const greetingForHour = (h) => (h < 12 ? 'Good Morning' : h < 17 ? 'Good Afternoon' : 'Good Evening');
+/* ─── Helpers ──────────────────────────────────────────────────── */
+const now = new Date();
+const DAY_NAMES  = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MON_NAMES  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const formatDate = () =>
+  `${DAY_NAMES[now.getDay()]}, ${MON_NAMES[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 
-// Daily Revenue Target component
-function DailyRevenueTarget({ todayRevenue, target }) {
-  const percent = Math.min(100, Math.round((todayRevenue / target) * 100));
-  const isAchieved = percent >= 100;
+function fmtTime(str) {
+  if (!str) return '';
+  // Already formatted like "10:30 AM"
+  if (/\d{1,2}:\d{2}\s?(AM|PM)/i.test(str)) return str;
+  // ISO date string — extract time
+  if (str.includes('T')) {
+    const d = new Date(str);
+    if (!isNaN(d)) {
+      const h = d.getHours(), m = d.getMinutes();
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      return `${(h % 12 || 12).toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} ${ampm}`;
+    }
+  }
+  // "HH:MM" or "HH:MM:SS"
+  const parts = str.split(':');
+  if (parts.length >= 2) {
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (!isNaN(h) && !isNaN(m)) {
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      return `${(h % 12 || 12).toString().padStart(2,'0')}:${m.toString().padStart(2,'0')} ${ampm}`;
+    }
+  }
+  return str; // return as-is if unrecognised
+}
 
+/* Avatar colour palette (cycle by index) */
+const AVATAR_COLORS = [
+  { bg: '#dbeafe', text: '#1d4ed8' }, // blue
+  { bg: '#fce7f3', text: '#be185d' }, // pink
+  { bg: '#d1fae5', text: '#065f46' }, // green
+  { bg: '#fef3c7', text: '#92400e' }, // amber
+  { bg: '#ede9fe', text: '#5b21b6' }, // purple
+  { bg: '#fee2e2', text: '#991b1b' }, // red
+  { bg: '#e0f2fe', text: '#0c4a6e' }, // sky
+];
+
+function getInitials(name = '') {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?';
+}
+
+/* Status display config */
+const STATUS_CFG = {
+  'in-progress': { label: 'In Consultation', cls: 'status-consultation' },
+  'completed':   { label: 'Completed',        cls: 'status-completed' },
+  'scheduled':   { label: 'Scheduled',        cls: 'status-scheduled' },
+  'confirmed':   { label: 'Scheduled',        cls: 'status-scheduled' },
+  'waiting':     { label: 'Waiting',           cls: 'status-waiting' },
+  'cancelled':   { label: 'Cancelled',         cls: 'status-cancelled' },
+  'WAITING_FOR_DOCTOR': { label: 'Waiting (Vitals Checked)', cls: 'status-waiting font-semibold animate-pulse' },
+  'IN_CONSULTATION': { label: 'In Consultation', cls: 'status-consultation font-semibold animate-pulse' },
+  'CONSULTATION_COMPLETED': { label: 'Completed', cls: 'status-completed' },
+  'REGISTERED': { label: 'Registered', cls: 'status-scheduled' },
+  'PAYMENT_PENDING': { label: 'Payment Pending', cls: 'status-waiting' },
+  'PAYMENT_COMPLETED': { label: 'Paid', cls: 'status-completed' },
+  'VITALS_PENDING': { label: 'Vitals Pending', cls: 'status-waiting' },
+  'VITALS_COMPLETED': { label: 'Vitals Completed', cls: 'status-completed' },
+  'CHECKOUT_COMPLETED': { label: 'Checked Out', cls: 'status-completed' },
+};
+
+/* ─── Stat Card ─────────────────────────────────────────────────── */
+function StatCard({ icon: Icon, iconCls, label, value, suffix, badge, badgeCls, isRevenue, delay }) {
   return (
-    <div className={`p-3 rounded-xl border ${isAchieved ? 'bg-emerald-50 border-emerald-200' : 'bg-gray-50 border-gray-100'}`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-gray-600">
-          {isAchieved ? '🎉 Target Achieved!' : 'Daily Target'}
-        </span>
-        <span className={`text-xs font-bold ${isAchieved ? 'text-emerald-600' : 'text-indigo-600'}`}>
-          {percent}%
-        </span>
+    <div className="stat-card animate-fade-up" style={{ animationDelay: delay }}>
+      <div className="flex items-start justify-between mb-3">
+        <div className={`stat-icon ${iconCls}`}>
+          <Icon size={20} />
+        </div>
+        {badge && (
+          <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeCls}`}>
+            {badge}
+          </span>
+        )}
       </div>
-      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-1000 ease-out ${isAchieved ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' : 'bg-gradient-to-r from-indigo-400 to-indigo-600'}`}
-          style={{ width: `${percent}%` }}
-        />
-      </div>
-      <p className="text-[11px] text-gray-500 mt-1.5">
-        ₹{todayRevenue.toLocaleString('en-IN')} of ₹{target.toLocaleString('en-IN')} goal
+      <p className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
+        {isRevenue && <span className="text-base opacity-60">₹</span>}
+        <AnimatedCounter end={Number(value || 0)} />
+        {suffix && <span className="text-base font-medium text-gray-500 ml-1">{suffix}</span>}
       </p>
+      <p className="text-sm text-gray-500 mt-1">{label}</p>
     </div>
   );
 }
 
-const statusColors = {
-  completed: 'badge-success',
-  'in-progress': 'badge-info',
-  scheduled: 'badge-primary',
-  confirmed: 'badge-primary',
-  cancelled: 'badge-danger'
-};
+/* ─── Quick Action Tile ─────────────────────────────────────────── */
+function QuickAction({ icon: Icon, label, to, colorCls, iconColor }) {
+  return (
+    <Link to={to} className={`quick-action-btn ${colorCls} hover-lift`}>
+      <div className={`w-10 h-10 rounded-xl flex items-center justify-center`}
+           style={{ background: iconColor + '22' }}>
+        <Icon size={18} style={{ color: iconColor }} />
+      </div>
+      <span className="text-xs font-semibold text-gray-700 leading-tight">{label}</span>
+    </Link>
+  );
+}
 
+/* ─── Upcoming Appointment Row ──────────────────────────────────── */
+function UpcomingRow({ time, name, sub, idx }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-gray-100 last:border-0">
+      <div className="text-right min-w-[42px]">
+        <p className="text-xs font-bold text-gray-800 leading-none">{fmtTime(time).split(' ')[0]}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">{fmtTime(time).split(' ')[1]}</p>
+      </div>
+      <div className="w-px self-stretch bg-gray-200 mx-1" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-800 leading-none truncate">{name}</p>
+        <p className="text-[11px] text-gray-400 mt-0.5 truncate">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DASHBOARD
+═══════════════════════════════════════════════════════════════════ */
 export default function Dashboard() {
   const user = getUser();
-  const [greeting, setGreeting] = useState('');
+  const navigate = useNavigate();
+  const [activeFilter, setActiveFilter] = useState('all');
   const [sendingReminders, setSendingReminders] = useState(false);
 
-  useEffect(() => setGreeting(greetingForHour(new Date().getHours())), []);
+  const { data: stats,   loading: statsLoading, error: statsError, refetch: refetchStats } = useApi('/dashboard/stats');
+  const { data: queueRaw, loading: queueLoading, refetch: refetchQueue } = useApi('/appointments/queue/today');
 
-  const { data: stats, loading: statsLoading, error: statsError, refetch: refetchStats } = useApi('/dashboard/stats');
-  const { data: queue, loading: queueLoading, refetch: refetchQueue } = useApi('/appointments/queue/today');
+  const doctorId = user?._id || user?.id;
+  const { refreshTrigger } = useDoctorSocket(user?.role === 'doctor' || !user?.role ? doctorId : null);
+
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      refetchQueue();
+      refetchStats();
+    }
+  }, [refreshTrigger, refetchQueue, refetchStats]);
   const { data: analytics } = useApi('/dashboard/analytics');
-  const { data: revenue } = useApi('/billing/revenue/summary');
+  const { data: revenue }   = useApi('/billing/revenue/summary');
+
+  /* Upcoming appointments (next few from queue) */
+  const upcoming = useMemo(() => {
+    if (!queueRaw) return [];
+    return [...queueRaw]
+      .filter(a => a.status === 'scheduled' || a.status === 'confirmed' || a.status === 'WAITING_FOR_DOCTOR')
+      .slice(0, 4);
+  }, [queueRaw]);
+
+  /* Filtered queue */
+  const queue = useMemo(() => {
+    if (!queueRaw) return [];
+    if (activeFilter === 'waiting')     return queueRaw.filter(a => a.status === 'waiting' || a.status === 'scheduled' || a.status === 'confirmed' || a.status === 'WAITING_FOR_DOCTOR');
+    if (activeFilter === 'in-progress') return queueRaw.filter(a => a.status === 'in-progress' || a.status === 'IN_CONSULTATION');
+    return queueRaw;
+  }, [queueRaw, activeFilter]);
 
   const sendReminders = async () => {
     setSendingReminders(true);
@@ -82,304 +190,334 @@ export default function Dashboard() {
 
   const startAppt = async (id) => {
     try {
-      await api.put(`/appointments/${id}`, { status: 'in-progress' });
-      refetchQueue();
-      refetchStats();
+      await api.put(`/appointments/${id}`, { status: 'IN_CONSULTATION' });
+      refetchQueue(); refetchStats();
       toast.success('Patient called in');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed');
-    }
+      navigate(`/visit-pad?appointmentId=${id}`);
+    } catch { toast.error('Failed to call patient in'); }
   };
 
   const completeAppt = async (id) => {
     try {
-      await api.put(`/appointments/${id}`, { status: 'completed' });
-      refetchQueue();
-      refetchStats();
+      await api.put(`/appointments/${id}`, { status: 'CONSULTATION_COMPLETED' });
+      refetchQueue(); refetchStats();
       toast.success('Appointment completed');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed');
-    }
+    } catch { toast.error('Failed to complete appointment'); }
   };
 
+  /* ── Stat card config ── */
   const statCards = [
     {
       icon: FiUsers,
+      iconCls: 'stat-icon-teal',
       label: 'Total Patients',
       value: stats?.totalPatients ?? 0,
-      sub: stats?.newPatientsThisMonth ? `+${stats.newPatientsThisMonth} this month` : null,
-      gradient: 'from-indigo-500 to-purple-600',
-      glow: '--glow-primary',
-      iconGlow: 'glow-indigo'
+      badge: stats?.newPatientsThisMonth ? `+${stats.newPatientsThisMonth}%` : null,
+      badgeCls: 'bg-green-100 text-green-700',
+      delay: '0ms',
     },
     {
       icon: FiCalendar,
-      label: "Today's Appointments",
+      iconCls: 'stat-icon-cyan',
+      label: 'Appointments Today',
       value: stats?.todayAppointments ?? 0,
-      sub: stats?.todayCompleted ? `${stats.todayCompleted} completed` : null,
-      gradient: 'from-cyan-500 to-blue-600',
-      glow: '--glow-cyan',
-      iconGlow: 'glow-cyan'
+      badge: 'Today',
+      badgeCls: 'bg-cyan-100 text-cyan-700',
+      delay: '80ms',
     },
     {
-      icon: FaRupeeSign,
-      label: 'Monthly Revenue',
-      value: stats?.monthRevenue ?? 0,
-      isRevenue: true,
-      sub: revenue?.today ? `₹${revenue.today.toLocaleString('en-IN')} today` : null,
-      gradient: 'from-emerald-500 to-teal-600',
-      glow: '--glow-emerald',
-      iconGlow: 'glow-emerald'
+      icon: FiCheckCircle,
+      iconCls: 'stat-icon-green',
+      label: 'Completed Visits',
+      value: stats?.todayCompleted ?? 0,
+      badge: stats?.completionRate ? `${stats.completionRate}%` : null,
+      badgeCls: 'bg-green-100 text-green-700',
+      delay: '160ms',
     },
     {
-      icon: FiAlertCircle,
-      label: 'Pending Payments',
-      value: stats?.pendingPayments ?? 0,
-      sub: 'Requires follow-up',
-      gradient: 'from-amber-500 to-orange-600',
-      glow: '--glow-amber',
-      iconGlow: 'glow-amber'
-    }
+      icon: FiClock,
+      iconCls: 'stat-icon-orange',
+      label: 'Avg Wait Time',
+      value: stats?.avgWaitTime ?? 12,
+      suffix: 'min',
+      badge: 'Avg',
+      badgeCls: 'bg-orange-100 text-orange-700',
+      delay: '240ms',
+    },
   ];
 
   return (
-    <div className="space-y-6 page-enter">
-      {/* Welcome Hero */}
-      <WelcomeHero greeting={greeting} doctorName={user.name || 'Doctor'} stats={stats} />
+    <div className="space-y-5 page-enter">
 
-      {/* Action Bar */}
-      <div className="flex flex-wrap items-center gap-2 animate-fade-up" style={{ animationDelay: '100ms' }}>
-        <button
-          onClick={() => { refetchStats(); refetchQueue(); toast.success('Refreshed'); }}
-          className="btn-ghost text-sm !py-2 !px-3"
-        >
-          <FiRefreshCw className="text-sm" /> Refresh
-        </button>
-        <Link to="/patients" className="btn-primary text-sm !py-2 !px-4">
-          <FiUserPlus className="text-sm" /> New Patient
-        </Link>
-        <button
-          onClick={sendReminders}
-          disabled={sendingReminders}
-          className="btn-success text-sm !py-2 !px-4"
-        >
-          <FaWhatsapp />
-          {sendingReminders ? 'Sending...' : 'Send Reminders'}
-        </button>
+      {/* ── Top action row ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900">
+            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'},
+            {' '}Dr. {user.name || 'Doctor'} 👋
+          </h1>
+          <p className="text-sm text-gray-500">{formatDate()}</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => { refetchStats(); refetchQueue(); toast.success('Refreshed'); }}
+            className="btn-secondary !py-1.5 !text-xs"
+          >
+            <FiRefreshCw size={13} /> Refresh
+          </button>
+          <Link to="/patients" className="btn-primary !py-1.5 !text-xs">
+            <FiUserPlus size={13} /> New Patient
+          </Link>
+          <button
+            onClick={sendReminders}
+            disabled={sendingReminders}
+            className="btn-success !py-1.5 !text-xs"
+          >
+            <FaWhatsapp size={13} />
+            {sendingReminders ? 'Sending…' : 'Send Reminders'}
+          </button>
+        </div>
       </div>
 
-      {/* Error */}
+      {/* ── Error ── */}
       {statsError && (
-        <div className="rounded-xl border border-rose-200 px-4 py-3 text-sm text-rose-700 bg-rose-50 flex items-center gap-2">
+        <div className="rounded-xl border border-red-200 px-4 py-3 text-sm text-red-700 bg-red-50 flex items-center gap-2">
           <FiAlertCircle /> {statsError}
         </div>
       )}
 
-      {/* ═══════ STAT CARDS ═══════ */}
+      {/* ── Stat Cards ── */}
       {statsLoading ? (
-        <Loader skeleton rows={3} />
+        <Loader skeleton rows={2} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((c, idx) => (
-            <div
-              key={c.label}
-              className="stat-card card-3d border-gradient-animated animate-fade-up"
-              style={{ animationDelay: `${(idx + 1) * 100}ms` }}
-            >
-              {/* Gradient icon with 3D glow */}
-              <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${c.gradient} flex items-center justify-center ${c.iconGlow} mb-4 icon-3d`}>
-                <c.icon className="text-white text-xl" />
-              </div>
-
-              {/* Value */}
-              <p className="text-3xl font-bold text-gray-900 tabular-nums animate-counter">
-                {c.isRevenue ? (
-                  <><span className="text-xl opacity-60">₹</span><AnimatedCounter end={Number(c.value || 0)} /></>
-                ) : (
-                  <AnimatedCounter end={c.value} />
-                )}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">{c.label}</p>
-
-              {/* Sub info */}
-              {c.sub && (
-                <div className="flex items-center gap-1.5 mt-3 text-xs font-medium text-emerald-600">
-                  <FiArrowUp className="text-[10px]" />
-                  <span>{c.sub}</span>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {statCards.map(c => <StatCard key={c.label} {...c} />)}
         </div>
       )}
 
-      {/* ═══════ MAIN GRID ═══════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Live Queue - 2 columns */}
-        <div className="lg:col-span-2 card animate-fade-up" style={{ animationDelay: '300ms' }}>
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              Live Queue
-              {queue && queue.length > 0 && (
-                <span className="badge badge-primary ml-2">{queue.length}</span>
-              )}
-            </h3>
-            <Link to="/appointments" className="text-sm text-indigo-600 font-medium hover:text-indigo-700 flex items-center gap-1 transition-colors">
-              View All <FiArrowUpRight className="text-xs" />
-            </Link>
+      {/* ── Main Grid ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+        {/* ── Patient Queue (left 2/3) ── */}
+        <div className="lg:col-span-2 card animate-fade-up stagger-3">
+          {/* Header + filter tabs */}
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h2 className="text-base font-bold text-gray-900">Today's Patient Queue</h2>
+            <div className="flex items-center gap-1 bg-gray-100 rounded-full p-0.5">
+              {[
+                { key: 'all',         label: 'All' },
+                { key: 'waiting',     label: 'Waiting' },
+                { key: 'in-progress', label: 'In Progress' },
+              ].map(f => (
+                <button
+                  key={f.key}
+                  onClick={() => setActiveFilter(f.key)}
+                  className={activeFilter === f.key ? 'filter-tab-active' : 'filter-tab'}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {queueLoading ? (
-            <Loader label="Loading queue..." />
+            <Loader label="Loading queue…" />
           ) : !queue || queue.length === 0 ? (
-            <EmptyState
-              icon={FiCalendar}
-              title="No patients in queue"
-              message="Appointments for today will appear here."
-              action={<Link to="/appointments" className="btn-primary text-sm !py-2">Book Appointment</Link>}
-            />
+            <div className="py-12 text-center">
+              <FiCalendar size={32} className="mx-auto text-gray-300 mb-3" />
+              <p className="text-sm font-medium text-gray-500">No patients in queue</p>
+              <p className="text-xs text-gray-400 mt-1">Appointments for today will appear here</p>
+              <Link to="/appointments" className="btn-primary text-xs mt-4 inline-flex">
+                Book Appointment
+              </Link>
+            </div>
           ) : (
-            <div className="space-y-2">
-              {queue.map((apt, idx) => (
-                <div
-                  key={apt._id}
-                  className={`flex items-center justify-between p-3.5 rounded-xl border transition-all duration-300 group animate-slide-in ${
-                    apt.status === 'in-progress'
-                      ? 'border-cyan-200 bg-cyan-50'
-                      : 'border-gray-100 hover:border-indigo-200 hover:bg-gray-50'
-                  }`}
-                  style={{ animationDelay: `${idx * 60}ms` }}
-                >
-                  <div className="flex items-center gap-3">
-                    {/* Token */}
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-xs font-bold ${
-                      apt.status === 'completed'
-                        ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                        : apt.status === 'in-progress'
-                        ? 'bg-cyan-50 text-cyan-600 border border-cyan-200'
-                        : 'bg-gray-50 text-gray-600 border border-gray-200'
-                    }`}>
-                      {apt.status === 'completed' ? <FiCheckCircle /> : `#${apt.tokenNumber}`}
+            <div>
+              {/* Table header */}
+              <div className="grid grid-cols-12 gap-2 px-2 pb-2 border-b border-gray-100">
+                <div className="col-span-5 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Patient</div>
+                <div className="col-span-4 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Status</div>
+                <div className="col-span-2 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Time</div>
+                <div className="col-span-1" />
+              </div>
+
+              {/* Rows */}
+              <div className="divide-y divide-gray-100">
+                {queue.map((apt, idx) => {
+                  const cfg      = STATUS_CFG[apt.status] || { label: apt.status, cls: 'status-scheduled' };
+                  const clr      = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                  const name     = apt.patientId?.name || 'Patient';
+                  const initials = getInitials(name);
+                  const meta     = [
+                    apt.patientId?.gender === 'male' ? 'Male' : apt.patientId?.gender === 'female' ? 'Female' : null,
+                    apt.patientId?.age ? `${apt.patientId.age} yrs` : null,
+                    `Token #${String(apt.tokenNumber || idx + 1).padStart(2,'0')}`,
+                  ].filter(Boolean).join(' • ');
+
+                  return (
+                    <div
+                      key={apt._id}
+                      className={`grid grid-cols-12 gap-2 items-center px-2 py-3 rounded-lg transition-colors duration-150 animate-slide-in group
+                        ${apt.status === 'in-progress' ? 'bg-green-50/60' : 'hover:bg-gray-50/80'}`}
+                      style={{ animationDelay: `${idx * 50}ms` }}
+                    >
+                      {/* Patient */}
+                      <div className="col-span-5 flex items-center gap-3">
+                        <div
+                          className="avatar text-sm font-bold flex-shrink-0"
+                          style={{ background: clr.bg, color: clr.text, width: 38, height: 38, borderRadius: 9999 }}
+                        >
+                          {initials}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{name}</p>
+                          <p className="text-[11px] text-gray-400 truncate">{meta}</p>
+                        </div>
+                      </div>
+
+                      {/* Status */}
+                      <div className="col-span-4">
+                        <span className={cfg.cls}>{cfg.label}</span>
+                      </div>
+
+                      {/* Time */}
+                      <div className="col-span-2">
+                        <span className="text-xs text-gray-500 font-medium">{fmtTime(apt.timeSlot)}</span>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="col-span-1 flex justify-end">
+                        {apt.status === 'scheduled' || apt.status === 'confirmed' || apt.status === 'WAITING_FOR_DOCTOR' ? (
+                          <button
+                            onClick={() => startAppt(apt._id)}
+                            title="Call In"
+                            className="p-1.5 rounded-lg bg-teal-100 text-teal-700 hover:bg-teal-200 shadow-sm"
+                          >
+                            <FiPlay size={12} />
+                          </button>
+                        ) : apt.status === 'in-progress' || apt.status === 'IN_CONSULTATION' ? (
+                          <button
+                            onClick={() => completeAppt(apt._id)}
+                            title="Mark Done"
+                            className="p-1.5 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 shadow-sm"
+                          >
+                            <FiCheck size={12} />
+                          </button>
+                        ) : null}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{apt.patientId?.name || 'Patient'}</p>
-                      <p className="text-xs text-gray-500">{apt.timeSlot} · {apt.type}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`badge ${statusColors[apt.status] || 'badge-info'}`}>
-                      {apt.status === 'in-progress' ? 'In Progress' : apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1)}
-                    </span>
-                    {apt.status === 'scheduled' && (
-                      <button
-                        onClick={() => startAppt(apt._id)}
-                        className="opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1.5 rounded-lg border border-indigo-200"
-                      >
-                        <FiPlay className="text-[10px]" /> Call In
-                      </button>
-                    )}
-                    {apt.status === 'in-progress' && (
-                      <button
-                        onClick={() => completeAppt(apt._id)}
-                        className="opacity-0 group-hover:opacity-100 transition-all duration-200 flex items-center gap-1 text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg border border-emerald-200"
-                      >
-                        <FiCheck className="text-[10px]" /> Done
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
+              </div>
+
+              {/* Footer */}
+              <div className="mt-3 pt-3 border-t border-gray-100 flex justify-end">
+                <Link to="/appointments" className="flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-800 transition-colors">
+                  View All Appointments <FiArrowUpRight size={12} />
+                </Link>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Right Column */}
-        <div className="space-y-6">
+        {/* ── Right Panel ── */}
+        <div className="space-y-5">
+
           {/* Quick Actions */}
-          <div className="card animate-fade-up" style={{ animationDelay: '400ms' }}>
-            <h3 className="text-base font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="grid grid-cols-2 gap-2.5">
-              <Link to="/visit-pad" className="quick-action-btn card-3d-left col-span-2 !flex-row !py-3 !px-4 bg-gradient-to-r from-teal-50 to-emerald-50 border-teal-200">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 flex items-center justify-center icon-3d">
-                  <FiActivity className="text-white text-sm" />
-                </div>
-                <div className="text-left">
-                  <span className="text-xs font-bold text-teal-700">Visit Pad</span>
-                  <p className="text-[10px] text-teal-500">Complete visit in 30s</p>
-                </div>
-              </Link>
-              <Link to="/patients" className="quick-action-btn card-3d-left">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center icon-3d">
-                  <FiUserPlus className="text-white text-sm" />
-                </div>
-                <span className="text-xs font-medium text-gray-600">Add Patient</span>
-              </Link>
-              <Link to="/appointments" className="quick-action-btn card-3d-right">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center icon-3d">
-                  <FiCalendar className="text-white text-sm" />
-                </div>
-                <span className="text-xs font-medium text-gray-600">Book Appt</span>
-              </Link>
-              <Link to="/prescriptions" className="quick-action-btn card-3d-left">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center icon-3d">
-                  <FiActivity className="text-white text-sm" />
-                </div>
-                <span className="text-xs font-medium text-gray-600">Prescribe</span>
-              </Link>
-              <Link to="/billing" className="quick-action-btn card-3d-right">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center icon-3d">
-                  <FiDollarSign className="text-white text-sm" />
-                </div>
-                <span className="text-xs font-medium text-gray-600">Create Bill</span>
-              </Link>
+          <div className="card animate-fade-up stagger-3">
+            <h2 className="text-base font-bold text-gray-900 mb-4">Quick Actions</h2>
+            <div className="grid grid-cols-2 gap-3">
+              <QuickAction
+                icon={FiFileText}
+                label="New Rx"
+                to="/prescriptions"
+                colorCls="quick-action-teal"
+                iconColor="#1a8c8c"
+              />
+              <QuickAction
+                icon={FaFlask}
+                label="Order Lab"
+                to="/lab-tests"
+                colorCls="quick-action-blue"
+                iconColor="#0369a1"
+              />
+              <QuickAction
+                icon={FaVideo}
+                label="Teleconsult"
+                to="/appointments"
+                colorCls="quick-action-purple"
+                iconColor="#6d28d9"
+              />
+              <QuickAction
+                icon={FaRupeeSign}
+                label="Invoice"
+                to="/billing"
+                colorCls="quick-action-orange"
+                iconColor="#b45309"
+              />
             </div>
           </div>
 
-          {/* Revenue Summary + Daily Target */}
+          {/* Upcoming Appointments */}
+          <div className="card animate-fade-up stagger-4">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-base font-bold text-gray-900">Upcoming Appointments</h2>
+              <Link to="/appointments" className="text-xs font-medium text-teal-700 hover:text-teal-800 transition-colors">
+                View All
+              </Link>
+            </div>
+
+            {upcoming.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="text-xs text-gray-400">No upcoming appointments</p>
+              </div>
+            ) : (
+              <div>
+                {upcoming.map((apt, idx) => {
+                  const name = apt.patientId?.name || 'Patient';
+                  const type = apt.type || 'Consultation';
+                  return (
+                    <UpcomingRow
+                      key={apt._id}
+                      time={apt.timeSlot}
+                      name={name}
+                      sub={`${type}${apt.patientId?.age ? ` • ${apt.patientId.age} yrs` : ''}`}
+                      idx={idx}
+                    />
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Revenue Summary (compact) */}
           {revenue && (
-            <div className="card animate-fade-up" style={{ animationDelay: '500ms' }}>
-              <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <FiTrendingUp className="text-emerald-500" /> Revenue
-              </h3>
-
-              {/* Daily Revenue Target Progress */}
-              <DailyRevenueTarget todayRevenue={revenue.today || 0} target={user.consultationFee ? user.consultationFee * 10 : 5000} />
-
-              <div className="space-y-3 mt-4">
+            <div className="card animate-fade-up stagger-5">
+              <h2 className="text-base font-bold text-gray-900 mb-3">Revenue</h2>
+              <div className="space-y-2.5">
                 {[
-                  { label: 'Today', value: revenue.today },
-                  { label: 'This Week', value: revenue.week },
+                  { label: 'Today',      value: revenue.today },
+                  { label: 'This Week',  value: revenue.week },
                   { label: 'This Month', value: revenue.month },
-                ].map((r) => (
+                ].map(r => (
                   <div key={r.label} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-500">{r.label}</span>
-                    <span className="text-sm font-semibold text-gray-900 tabular-nums">₹{(r.value || 0).toLocaleString('en-IN')}</span>
+                    <span className="text-xs text-gray-500">{r.label}</span>
+                    <span className="text-sm font-semibold text-gray-800 tabular-nums">
+                      ₹{(r.value || 0).toLocaleString('en-IN')}
+                    </span>
                   </div>
                 ))}
-                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">All Time</span>
-                  <span className="text-lg font-bold text-indigo-600 tabular-nums">₹{(revenue.total || 0).toLocaleString('en-IN')}</span>
+                <div className="pt-2.5 border-t border-gray-100 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-700">All Time</span>
+                  <span className="text-base font-bold tabular-nums" style={{ color: 'var(--nav-bg)' }}>
+                    ₹{(revenue.total || 0).toLocaleString('en-IN')}
+                  </span>
                 </div>
               </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* ═══════ CHARTS ROW ═══════ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="card animate-fade-up" style={{ animationDelay: '600ms' }}>
-          <h3 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <FiTrendingUp className="text-indigo-500" /> Revenue Trend
-          </h3>
-          <RevenueChart monthly={analytics?.monthlyRevenue || []} />
-        </div>
-        <ProfitLossWidget />
-      </div>
-
-      {/* Today Schedule */}
-      <TodayScheduleWidget />
     </div>
   );
 }

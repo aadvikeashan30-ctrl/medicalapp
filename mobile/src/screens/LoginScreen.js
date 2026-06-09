@@ -76,7 +76,7 @@ export default function LoginScreen({ navigation }) {
           </TouchableOpacity>
           <TouchableOpacity style={styles.linkContainer}>
             <Text style={styles.link}>
-              Don't have an account? <Text style={styles.linkBold}>Start Free Trial</Text>
+              Don't have an account? <Text style={styles.linkBold}>Sign Up</Text>
             </Text>
           </TouchableOpacity>
         </View>

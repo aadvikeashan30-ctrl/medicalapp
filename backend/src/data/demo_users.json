@@ -1,0 +1,195 @@
+{
+  "demo-doctor-001": {
+    "_id": "demo-doctor-001",
+    "id": "demo-doctor-001",
+    "name": "Demo Doctor",
+    "email": "demo@docclinic.com",
+    "password": "demo1234",
+    "phone": "9000000000",
+    "role": "doctor",
+    "specialty": "general",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-DEMO-001",
+    "clinicName": "DocClinic Demo Centre",
+    "clinicAddress": "123 Health Street",
+    "clinicCity": "Mumbai",
+    "consultationFee": 500,
+    "plan": "pro",
+    "planExpiry": "2027-06-07T16:51:36.181Z",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "demo-receptionist-001": {
+    "_id": "demo-receptionist-001",
+    "id": "demo-receptionist-001",
+    "name": "Receptionist Mary",
+    "email": "receptionist@docclinic.com",
+    "password": "receptionist1234",
+    "phone": "9111111111",
+    "role": "receptionist",
+    "specialty": "general",
+    "clinicName": "DocClinic Demo Centre",
+    "clinicAddress": "123 Health Street",
+    "clinicCity": "Mumbai",
+    "plan": "pro",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "demo-nurse-001": {
+    "_id": "demo-nurse-001",
+    "id": "demo-nurse-001",
+    "name": "Nurse Nancy",
+    "email": "nurse@docclinic.com",
+    "password": "nurse1234",
+    "phone": "9222222222",
+    "role": "nurse",
+    "specialty": "general",
+    "clinicName": "DocClinic Demo Centre",
+    "clinicAddress": "123 Health Street",
+    "clinicCity": "Mumbai",
+    "plan": "pro",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "doc-1780851130700": {
+    "_id": "doc-1780851130700",
+    "id": "doc-1780851130700",
+    "name": "Vinaya S Manjunatha",
+    "email": "vinu@gmail.com",
+    "password": "nishu@123",
+    "phone": "9858862548",
+    "role": "doctor",
+    "specialty": "gynecology",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-1780851130700",
+    "clinicName": "Nishu Multi-Speciality Hospital",
+    "clinicAddress": "",
+    "clinicCity": "Utter Pradesh",
+    "consultationFee": 500,
+    "plan": "free",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "doc-1780851154725": {
+    "_id": "doc-1780851154725",
+    "id": "doc-1780851154725",
+    "name": "Appu",
+    "email": "appu@gmail.com",
+    "password": "appu@123",
+    "phone": "9336523554",
+    "role": "doctor",
+    "specialty": "dental",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-1780851154725",
+    "clinicName": "Appu Multi-Speciality Hospital",
+    "clinicAddress": "",
+    "clinicCity": "Karanataka",
+    "consultationFee": 500,
+    "plan": "free",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "doc-1780851249531": {
+    "_id": "doc-1780851249531",
+    "id": "doc-1780851249531",
+    "name": "Pruthvi Raj R",
+    "email": "pruthvi@gmail.com",
+    "password": "pruthvi@123",
+    "phone": "9663585539",
+    "role": "doctor",
+    "specialty": "eye",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-1780851249531",
+    "clinicName": "Pruthvi Multi-Speciality Hospital",
+    "clinicAddress": "",
+    "clinicCity": "Karanataka",
+    "consultationFee": 500,
+    "plan": "free",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "doc-1780858372196": {
+    "_id": "doc-1780858372196",
+    "id": "doc-1780858372196",
+    "name": "Vinay S Manjunatha",
+    "email": "vinu@gimal.com",
+    "password": "nishu@123",
+    "phone": "9858862548",
+    "role": "doctor",
+    "specialty": "general",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-1780858372197",
+    "clinicName": "Nishu Multi-Speciality Hospital",
+    "clinicAddress": "",
+    "clinicCity": "Utter Pradesh",
+    "consultationFee": 500,
+    "plan": "free",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "doc-1780858428754": {
+    "_id": "doc-1780858428754",
+    "id": "doc-1780858428754",
+    "name": "Appu",
+    "email": "appu@gimal.com",
+    "password": "appu@123",
+    "phone": "9336523554",
+    "role": "doctor",
+    "specialty": "dental",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-1780858428754",
+    "clinicName": "Appu Multi-Speciality Hospital",
+    "clinicAddress": "",
+    "clinicCity": "Karanataka",
+    "consultationFee": 500,
+    "plan": "free",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  },
+  "doc-1780858516852": {
+    "_id": "doc-1780858516852",
+    "id": "doc-1780858516852",
+    "name": "Pruthvi",
+    "email": "pruthvi@gimal.com",
+    "password": "pruthvi@123",
+    "phone": "9663585539",
+    "role": "doctor",
+    "specialty": "ortho",
+    "qualification": "MBBS, MD",
+    "registrationNo": "REG-1780858516852",
+    "clinicName": "Pruthvi Multi-Speciality Hospital",
+    "clinicAddress": "",
+    "clinicCity": "Karanataka",
+    "consultationFee": 500,
+    "plan": "free",
+    "workingHours": {
+      "start": "09:00",
+      "end": "18:00"
+    },
+    "isActive": true
+  }
+}

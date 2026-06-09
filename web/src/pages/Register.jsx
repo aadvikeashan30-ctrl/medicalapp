@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { FaStethoscope } from 'react-icons/fa';
-import { FiUser, FiMail, FiLock, FiPhone, FiMapPin } from 'react-icons/fi';
+import { FiUser, FiMail, FiLock, FiPhone, FiMapPin, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { setSession } from '../utils/auth';
@@ -24,22 +24,32 @@ export default function Register() {
     name: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     specialty: 'general',
     clinicName: '',
     clinicCity: '',
     qualification: ''
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.password.length < 6) {
+      return toast.error('Password must be at least 6 characters');
+    }
+    if (form.password !== form.confirmPassword) {
+      return toast.error('Passwords do not match');
+    }
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/register', form);
+      const { confirmPassword, ...payload } = form;
+      const { data } = await api.post('/auth/register', payload);
       setSession(data.token, data.user);
-      toast.success('Welcome to DocClinic Pro! 30-day free trial activated.');
+      toast.success('Welcome to DocClinic Pro! Account created successfully.');
       navigate('/');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Registration failed');
@@ -61,12 +71,12 @@ export default function Register() {
             </div>
             <span className="text-2xl font-bold text-white">DocClinic Pro</span>
           </div>
-          <h2 className="text-3xl font-bold text-white leading-tight mb-4">Start Your<br />30-Day Free Trial</h2>
-          <p className="text-emerald-100 text-lg">No credit card required. Cancel anytime.</p>
+          <h2 className="text-3xl font-bold text-white leading-tight mb-4">Join<br />DocClinic Pro</h2>
+          <p className="text-emerald-100 text-lg">Manage your clinic, patients, and billing in one unified platform.</p>
         </div>
 
         <div className="relative z-10 bg-white/10 backdrop-blur rounded-2xl p-6">
-          <p className="text-white font-semibold mb-3">What you get free:</p>
+          <p className="text-white font-semibold mb-3">Features included:</p>
           <ul className="space-y-2 text-emerald-100">
             <li className="flex items-center gap-2"><span className="text-emerald-300">&#10003;</span> Unlimited patients</li>
             <li className="flex items-center gap-2"><span className="text-emerald-300">&#10003;</span> Appointment management</li>
@@ -134,15 +144,57 @@ export default function Register() {
               <div className="relative">
                 <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="input-field pl-10 py-2.5"
+                  className="input-field pl-10 pr-10 py-2.5"
                   placeholder="Min 6 characters"
                   required
                   minLength={6}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+              <div className="relative">
+                <FiLock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type={showConfirm ? 'text' : 'password'}
+                  value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  className={`input-field pl-10 pr-10 py-2.5 ${
+                    form.confirmPassword && form.password !== form.confirmPassword
+                      ? 'border-red-400 focus:border-red-500 focus:ring-red-200'
+                      : form.confirmPassword && form.password === form.confirmPassword
+                      ? 'border-emerald-400 focus:border-emerald-500 focus:ring-emerald-200'
+                      : ''
+                  }`}
+                  placeholder="Re-enter your password"
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  {showConfirm ? <FiEyeOff /> : <FiEye />}
+                </button>
+                {form.confirmPassword && form.password === form.confirmPassword && (
+                  <FiCheckCircle className="absolute right-9 top-1/2 -translate-y-1/2 text-emerald-500 text-sm" />
+                )}
+              </div>
+              {form.confirmPassword && form.password !== form.confirmPassword && (
+                <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -196,8 +248,12 @@ export default function Register() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="btn-primary w-full py-3.5 text-center mt-6">
-              {loading ? 'Creating Account...' : 'Start Free Trial - No Card Needed'}
+            <button
+              type="submit"
+              disabled={loading || (form.confirmPassword && form.password !== form.confirmPassword)}
+              className="btn-primary w-full py-3.5 text-center mt-6 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 

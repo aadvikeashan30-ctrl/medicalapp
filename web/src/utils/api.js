@@ -26,13 +26,45 @@ api.interceptors.response.use(
     const isServerDown = !error.response || error.response.status >= 500;
 
     if (isServerDown) {
-      // Check if user is demo user OR if backend is just down
+      const url = error.config?.url || '';
+      const method = error.config?.method || 'get';
       const userStr = localStorage.getItem('user');
+
+      // Special override for /auth/profile to prevent overwriting logged-in user
+      if (url.includes('auth/profile')) {
+        if (method.toLowerCase() === 'put' && error.config.data) {
+          try {
+            const updated = { ...JSON.parse(userStr || '{}'), ...JSON.parse(error.config.data) };
+            localStorage.setItem('user', JSON.stringify(updated));
+            return Promise.resolve({
+              data: updated,
+              status: 200,
+              statusText: 'OK (Offline Fallback)',
+              headers: {},
+              config: error.config
+            });
+          } catch (e) {}
+        }
+
+        if (userStr) {
+          try {
+            const currentObj = JSON.parse(userStr);
+            return Promise.resolve({
+              data: currentObj,
+              status: 200,
+              statusText: 'OK (Offline Fallback)',
+              headers: {},
+              config: error.config
+            });
+          } catch (e) {}
+        }
+      }
+
+      // Check if user is demo user OR if backend is just down
       const isDemo = isDemoMode() || (userStr && userStr.includes('demo-doctor-001'));
       
       if (isDemo) {
         // Serve demo data from client
-        const url = error.config?.url || '';
         const demoData = getDemoResponse(url);
         return Promise.resolve({
           data: demoData,
@@ -45,7 +77,6 @@ api.interceptors.response.use(
 
       // Backend is down but user isn't in demo mode — still try to serve demo data
       // This prevents blank screens when backend just isn't running
-      const url = error.config?.url || '';
       const demoData = getDemoResponse(url);
       if (demoData && !demoData.message?.includes('no data available')) {
         return Promise.resolve({

@@ -81,7 +81,7 @@ export default function Pricing() {
         {/* Hero */}
         <div className="text-center mb-14 relative z-10">
           <div className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold mb-5 badge-primary">
-            <FiZap className="text-xs" /> 30-Day Free Trial · No Card Required
+            <FiZap className="text-xs" /> Flexible Plans · Cancel Anytime
           </div>
           <h1 className="text-4xl md:text-5xl font-bold mb-4">
             Pricing that <span className="gradient-text">scales</span> with you
@@ -165,7 +165,7 @@ export default function Pricing() {
                   plan.popular ? 'btn-primary' : 'btn-secondary'
                 }`}
               >
-                Start Free Trial <FiArrowRight className="text-xs" />
+                Get Started <FiArrowRight className="text-xs" />
               </Link>
 
               {/* Features */}

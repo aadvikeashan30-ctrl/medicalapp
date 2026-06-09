@@ -13,12 +13,24 @@ const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 const router = express.Router();
 
-// Demo data store (in memory - resets on server restart)
-const DEMO_USER = {
+const path = require('path');
+const fs = require('fs');
+
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const USERS_FILE = path.join(DATA_DIR, 'demo_users.json');
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+let DEMO_USERS = {};
+
+const DEFAULT_DEMO_USER = {
   _id: 'demo-doctor-001',
   id: 'demo-doctor-001',
   name: 'Demo Doctor',
   email: 'demo@docclinic.com',
+  password: 'demo1234',
   phone: '9000000000',
   role: 'doctor',
   specialty: 'general',
@@ -33,6 +45,77 @@ const DEMO_USER = {
   workingHours: { start: '09:00', end: '18:00' },
   isActive: true
 };
+
+const DEFAULT_RECEPTIONIST_USER = {
+  _id: 'demo-receptionist-001',
+  id: 'demo-receptionist-001',
+  name: 'Receptionist Mary',
+  email: 'receptionist@docclinic.com',
+  password: 'receptionist1234',
+  phone: '9111111111',
+  role: 'receptionist',
+  specialty: 'general',
+  clinicName: 'DocClinic Demo Centre',
+  clinicAddress: '123 Health Street',
+  clinicCity: 'Mumbai',
+  plan: 'pro',
+  workingHours: { start: '09:00', end: '18:00' },
+  isActive: true
+};
+
+const DEFAULT_NURSE_USER = {
+  _id: 'demo-nurse-001',
+  id: 'demo-nurse-001',
+  name: 'Nurse Nancy',
+  email: 'nurse@docclinic.com',
+  password: 'nurse1234',
+  phone: '9222222222',
+  role: 'nurse',
+  specialty: 'general',
+  clinicName: 'DocClinic Demo Centre',
+  clinicAddress: '123 Health Street',
+  clinicCity: 'Mumbai',
+  plan: 'pro',
+  workingHours: { start: '09:00', end: '18:00' },
+  isActive: true
+};
+
+if (fs.existsSync(USERS_FILE)) {
+  try {
+    DEMO_USERS = JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+    let changed = false;
+    if (!DEMO_USERS['demo-doctor-001']) { DEMO_USERS['demo-doctor-001'] = DEFAULT_DEMO_USER; changed = true; }
+    if (!DEMO_USERS['demo-receptionist-001']) { DEMO_USERS['demo-receptionist-001'] = DEFAULT_RECEPTIONIST_USER; changed = true; }
+    if (!DEMO_USERS['demo-nurse-001']) { DEMO_USERS['demo-nurse-001'] = DEFAULT_NURSE_USER; changed = true; }
+    if (changed) {
+      saveDemoUsers();
+    }
+  } catch (e) {
+    DEMO_USERS = {
+      'demo-doctor-001': DEFAULT_DEMO_USER,
+      'demo-receptionist-001': DEFAULT_RECEPTIONIST_USER,
+      'demo-nurse-001': DEFAULT_NURSE_USER
+    };
+    saveDemoUsers();
+  }
+} else {
+  DEMO_USERS = {
+    'demo-doctor-001': DEFAULT_DEMO_USER,
+    'demo-receptionist-001': DEFAULT_RECEPTIONIST_USER,
+    'demo-nurse-001': DEFAULT_NURSE_USER
+  };
+  saveDemoUsers();
+}
+
+function saveDemoUsers() {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(DEMO_USERS, null, 2), 'utf8');
+  } catch (e) {
+    // Ignore write errors
+  }
+}
+
+const DEMO_USER = DEMO_USERS['demo-doctor-001'];
 
 const today = new Date();
 today.setHours(0, 0, 0, 0);
@@ -94,6 +177,22 @@ const DEMO_BILLS = [
   { _id: 'bill-4', invoiceNo: 'INV-00004', patientId: DEMO_PATIENTS[3], items: [{ description: 'Follow-up', amount: 300, quantity: 1 }, { description: 'HbA1c Test', amount: 600, quantity: 1 }], subtotal: 900, totalAmount: 900, paidAmount: 500, paymentMethod: 'card', paymentStatus: 'partial', createdAt: new Date('2025-05-28') }
 ];
 
+// Helper to decode token and retrieve specific demo doctor
+function getDemoUser(req) {
+  try {
+    const header = req.header('Authorization') || '';
+    const token = header.replace(/^Bearer\s+/i, '').trim();
+    if (token) {
+      const secret = process.env.JWT_SECRET || 'demo-fallback-secret-key-32chars!!';
+      const decoded = jwt.verify(token, secret);
+      if (decoded.userId && DEMO_USERS[decoded.userId]) {
+        return DEMO_USERS[decoded.userId];
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return null;
+}
+
 // Middleware: only respond if DB is not connected (demo mode)
 // Also checks actual mongoose connection state to handle race conditions
 function demoOnly(req, res, next) {
@@ -106,7 +205,7 @@ function demoOnly(req, res, next) {
       if (token) {
         const secret = process.env.JWT_SECRET || 'demo-fallback-secret-key-32chars!!';
         const decoded = jwt.verify(token, secret);
-        if (decoded.userId === 'demo-doctor-001') {
+        if (decoded.userId === 'demo-doctor-001' || decoded.userId?.startsWith('doc-')) {
           return next(); // Serve demo data for demo user even if DB is connected
         }
       }
@@ -121,25 +220,65 @@ function demoOnly(req, res, next) {
 // Demo login ALWAYS works — no demoOnly check needed for login
 router.post('/auth/login', (req, res, next) => {
   const { email, password } = req.body;
-  if (email === 'demo@docclinic.com' && password === 'demo1234') {
-    const token = jwt.sign({ userId: DEMO_USER._id }, process.env.JWT_SECRET || 'demo-fallback-secret-key-32chars!!', { expiresIn: '30d' });
-    return res.json({ token, user: DEMO_USER });
+  const matchedUser = Object.values(DEMO_USERS).find(
+    (u) => u.email === email && u.password === password
+  );
+
+  if (matchedUser) {
+    const token = jwt.sign({ userId: matchedUser._id }, process.env.JWT_SECRET || 'demo-fallback-secret-key-32chars!!', { expiresIn: '30d' });
+    return res.json({ token, user: matchedUser });
   }
   // Not demo credentials — pass to real auth route
   next('route');
 });
 
 router.post('/auth/register', demoOnly, (req, res) => {
-  const token = jwt.sign({ userId: DEMO_USER._id }, process.env.JWT_SECRET || 'demo-fallback-secret-key-32chars!!', { expiresIn: '30d' });
-  return res.status(201).json({ token, user: { ...DEMO_USER, name: req.body.name || DEMO_USER.name } });
+  const { name, email, password, phone, specialty, clinicName, clinicCity, qualification } = req.body;
+  const existingUser = Object.values(DEMO_USERS).find((u) => u.email === email);
+  if (existingUser) {
+    return res.status(409).json({ message: 'Email already registered' });
+  }
+
+  const newUserId = `doc-${Date.now()}`;
+  const newUser = {
+    _id: newUserId,
+    id: newUserId,
+    name: name || 'Doctor Name',
+    email,
+    password,
+    phone: phone || '',
+    role: 'doctor',
+    specialty: specialty || 'general',
+    qualification: qualification || 'MBBS, MD',
+    registrationNo: req.body.registrationNo || `REG-${Date.now()}`,
+    clinicName: clinicName || '',
+    clinicAddress: req.body.clinicAddress || '',
+    clinicCity: clinicCity || '',
+    consultationFee: req.body.consultationFee || 500,
+    plan: 'free',
+    workingHours: { start: '09:00', end: '18:00' },
+    isActive: true
+  };
+
+  DEMO_USERS[newUserId] = newUser;
+  saveDemoUsers();
+
+  const token = jwt.sign({ userId: newUserId }, process.env.JWT_SECRET || 'demo-fallback-secret-key-32chars!!', { expiresIn: '30d' });
+  return res.status(201).json({ token, user: newUser });
 });
 
 router.get('/auth/profile', demoOnly, (req, res) => {
-  res.json(DEMO_USER);
+  const user = getDemoUser(req);
+  if (!user) return res.status(401).json({ message: 'Session expired, please log in again.' });
+  res.json(user);
 });
 
 router.put('/auth/profile', demoOnly, (req, res) => {
-  res.json({ ...DEMO_USER, ...req.body });
+  const user = getDemoUser(req);
+  if (!user) return res.status(401).json({ message: 'Session expired, please log in again.' });
+  Object.assign(user, req.body);
+  saveDemoUsers();
+  res.json(user);
 });
 
 router.post('/auth/change-password', demoOnly, (req, res) => {
@@ -240,7 +379,7 @@ router.get('/appointments', demoOnly, (req, res) => {
 });
 
 router.get('/appointments/queue/today', demoOnly, (req, res) => {
-  const queue = DEMO_APPOINTMENTS.filter((a) => ['scheduled', 'confirmed', 'in-progress'].includes(a.status));
+  const queue = DEMO_APPOINTMENTS.filter((a) => ['scheduled', 'confirmed', 'in-progress', 'REGISTERED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'VITALS_PENDING', 'VITALS_COMPLETED', 'WAITING_FOR_DOCTOR', 'IN_CONSULTATION', 'CONSULTATION_COMPLETED', 'CHECKOUT_COMPLETED'].includes(a.status));
   res.json(queue);
 });
 
@@ -252,9 +391,18 @@ router.post('/appointments', demoOnly, (req, res) => {
     date: req.body.date,
     timeSlot: req.body.timeSlot,
     type: req.body.type || 'consultation',
-    status: 'scheduled',
+    status: req.body.status || 'scheduled',
     tokenNumber: DEMO_APPOINTMENTS.length + 1,
-    symptoms: req.body.symptoms || ''
+    symptoms: req.body.symptoms || '',
+    doctorId: req.body.doctorId || 'demo-doctor-001',
+    registrationFee: req.body.registrationFee || 0,
+    consultationFee: req.body.consultationFee || 0,
+    vitals: req.body.vitals || {},
+    chiefComplaint: req.body.chiefComplaint || '',
+    diagnosis: req.body.diagnosis || '',
+    prescriptionDetails: req.body.prescriptionDetails || '',
+    labOrders: req.body.labOrders || [],
+    followUpDate: req.body.followUpDate
   };
   DEMO_APPOINTMENTS.push(apt);
   res.status(201).json(apt);
@@ -628,3 +776,4 @@ router.get('/portal/track/:id', demoOnly, (req, res) => {
 });
 
 module.exports = router;
+module.exports.DEMO_USERS = DEMO_USERS;

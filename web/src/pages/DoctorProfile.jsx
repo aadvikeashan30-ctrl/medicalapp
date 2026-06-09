@@ -1,19 +1,36 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FiUser, FiAward, FiMapPin, FiPhone, FiMail,
   FiClock, FiStar, FiCalendar, FiEdit2, FiCamera,
-  FiActivity, FiTrendingUp, FiUsers, FiBookOpen
+  FiActivity, FiTrendingUp, FiUsers, FiBookOpen, FiSettings
 } from 'react-icons/fi';
-import { FaStethoscope, FaGraduationCap, FaHospital, FaQrcode } from 'react-icons/fa';
+import { FaStethoscope, FaGraduationCap, FaHospital, FaQrcode, FaIdCard } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 import { getUser } from '../utils/auth';
+import api from '../utils/api';
 import ThreeDCard from '../components/ThreeDCard';
 import AnimatedCounter from '../components/AnimatedCounter';
 import FloatingOrb from '../components/FloatingOrb';
 import QRBookingCode from '../components/QRBookingCode';
+import Loader from '../components/Loader';
 
 export default function DoctorProfile() {
-  const user = getUser();
+  const localUser = getUser();
+  const [user, setUser] = useState(localUser);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Fetch fresh profile from API so data is always current
+  useEffect(() => {
+    api.get('/auth/profile')
+      .then(res => {
+        if (res.data && res.data.name) setUser(res.data);
+      })
+      .catch(() => {
+        // Fallback to localStorage data — already set above
+      })
+      .finally(() => setProfileLoading(false));
+  }, []);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: FiUser },
@@ -58,9 +75,13 @@ export default function DoctorProfile() {
             <div className="w-28 h-28 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/30 flex items-center justify-center shadow-2xl transform-3d">
               <FaStethoscope className="text-white text-4xl" />
             </div>
-            <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+            <Link
+              to="/settings"
+              className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Edit Profile"
+            >
               <FiCamera className="text-gray-600 text-sm" />
-            </button>
+            </Link>
           </div>
 
           {/* Info */}
@@ -69,26 +90,45 @@ export default function DoctorProfile() {
             <p className="text-blue-200 mt-1 flex items-center justify-center md:justify-start gap-2">
               <FaGraduationCap /> {user.qualification || 'MBBS, MD'} | {user.specialty || 'General Physician'}
             </p>
+            {user.registrationNo && (
+              <p className="text-blue-300 text-sm mt-1 flex items-center justify-center md:justify-start gap-2">
+                <FaIdCard className="text-xs" /> Reg No: {user.registrationNo}
+              </p>
+            )}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mt-3 text-blue-100 text-sm">
-              <span className="flex items-center gap-1"><FiMapPin /> {user.clinicCity || 'Mumbai'}</span>
-              <span className="flex items-center gap-1"><FiPhone /> {user.phone || '+91 98765 43210'}</span>
-              <span className="flex items-center gap-1"><FiMail /> {user.email || 'doctor@clinic.com'}</span>
+              {(user.clinicCity || user.clinicName) && (
+                <span className="flex items-center gap-1"><FiMapPin /> {user.clinicCity || 'Mumbai'}</span>
+              )}
+              {user.phone && (
+                <span className="flex items-center gap-1"><FiPhone /> {user.phone}</span>
+              )}
+              {user.email && (
+                <span className="flex items-center gap-1"><FiMail /> {user.email}</span>
+              )}
             </div>
           </div>
 
-          {/* Quick stats */}
-          <div className="flex gap-4">
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
-              <p className="text-2xl font-bold text-white"><AnimatedCounter end={547} /></p>
-              <p className="text-xs text-blue-200">Patients</p>
-            </div>
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
-              <p className="text-2xl font-bold text-white"><AnimatedCounter end={4.9} decimals={1} /></p>
-              <p className="text-xs text-blue-200">Rating</p>
-            </div>
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
-              <p className="text-2xl font-bold text-white"><AnimatedCounter end={5} suffix="yr" /></p>
-              <p className="text-xs text-blue-200">Experience</p>
+          {/* Actions + Quick stats */}
+          <div className="flex flex-col items-end gap-3">
+            <Link
+              to="/settings"
+              className="flex items-center gap-2 px-4 py-2 bg-white/15 hover:bg-white/25 backdrop-blur-sm rounded-xl text-white text-sm font-medium transition-all border border-white/20"
+            >
+              <FiEdit2 className="text-sm" /> Edit Profile
+            </Link>
+            <div className="flex gap-3">
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                <p className="text-2xl font-bold text-white"><AnimatedCounter end={547} /></p>
+                <p className="text-xs text-blue-200">Patients</p>
+              </div>
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                <p className="text-2xl font-bold text-white"><AnimatedCounter end={4.9} decimals={1} /></p>
+                <p className="text-xs text-blue-200">Rating</p>
+              </div>
+              <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
+                <p className="text-2xl font-bold text-white"><AnimatedCounter end={user.experience || 5} suffix="yr" /></p>
+                <p className="text-xs text-blue-200">Experience</p>
+              </div>
             </div>
           </div>
         </div>
@@ -168,22 +208,32 @@ export default function DoctorProfile() {
                 <FaHospital className="text-emerald-600" /> Clinic Info
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-3 text-gray-600">
-                  <FaHospital className="text-gray-400" />
-                  <span>{user.clinicName || 'My Clinic'}</span>
+                <div className="flex items-start gap-3 text-gray-600">
+                  <FaHospital className="text-gray-400 mt-0.5 flex-shrink-0" />
+                  <span className="font-medium">{user.clinicName || 'My Clinic'}</span>
                 </div>
+                {(user.clinicAddress || user.clinicCity) && (
+                  <div className="flex items-start gap-3 text-gray-600">
+                    <FiMapPin className="text-gray-400 mt-0.5 flex-shrink-0" />
+                    <span>
+                      {[user.clinicAddress, user.clinicCity].filter(Boolean).join(', ')}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center gap-3 text-gray-600">
-                  <FiMapPin className="text-gray-400" />
-                  <span>{user.clinicAddress || '123 Medical Street'}</span>
+                  <FiClock className="text-gray-400 flex-shrink-0" />
+                  <span>
+                    {user.workingHours?.start && user.workingHours?.end
+                      ? `${user.workingHours.start} – ${user.workingHours.end}`
+                      : 'Mon-Sat: 9AM – 6PM'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-3 text-gray-600">
-                  <FiClock className="text-gray-400" />
-                  <span>Mon-Sat: 9AM - 6PM</span>
-                </div>
-                <div className="flex items-center gap-3 text-gray-600">
-                  <FiPhone className="text-gray-400" />
-                  <span>{user.phone || '+91 98765 43210'}</span>
-                </div>
+                {user.phone && (
+                  <div className="flex items-center gap-3 text-gray-600">
+                    <FiPhone className="text-gray-400 flex-shrink-0" />
+                    <span>{user.phone}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -191,6 +241,12 @@ export default function DoctorProfile() {
               <h4 className="font-bold text-gray-900 mb-2">Consultation Fee</h4>
               <p className="text-3xl font-bold text-blue-600">₹{user.consultationFee || 500}</p>
               <p className="text-xs text-gray-500 mt-1">Per visit (follow-up: ₹{Math.round((user.consultationFee || 500) * 0.6)})</p>
+              <Link
+                to="/settings?tab=clinic"
+                className="mt-3 inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                <FiEdit2 className="text-xs" /> Update fee
+              </Link>
             </div>
           </div>
         </div>

@@ -6,6 +6,7 @@ import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import PrintInvoice from '../components/PrintInvoice';
+import PatientSearchSelect from '../components/PatientSearchSelect';
 
 const statusStyles = {
   paid: 'bg-emerald-100 text-emerald-700',
@@ -265,18 +266,13 @@ export default function Billing() {
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
-                <select
-                  className="input-field" required
+                <PatientSearchSelect
+                  patients={patients}
                   value={form.patientId}
-                  onChange={(e) => setForm({ ...form, patientId: e.target.value })}
-                >
-                  <option value="">Select patient...</option>
-                  {patients.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name} ({p.patientId})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => setForm({ ...form, patientId: id })}
+                  required
+                  placeholder="Search by name or Patient ID..."
+                />
               </div>
 
               <div>

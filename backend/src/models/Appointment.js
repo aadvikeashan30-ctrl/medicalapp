@@ -15,7 +15,10 @@ const appointmentSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['scheduled', 'confirmed', 'in-progress', 'completed', 'cancelled', 'no-show'],
+      enum: ['scheduled', 'confirmed', 'in-progress', 'completed', 'cancelled', 'no-show',
+             'REGISTERED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'VITALS_PENDING',
+             'VITALS_COMPLETED', 'WAITING_FOR_DOCTOR', 'IN_CONSULTATION',
+             'CONSULTATION_COMPLETED', 'CHECKOUT_COMPLETED'],
       default: 'scheduled'
     },
     symptoms: { type: String },
@@ -26,12 +29,29 @@ const appointmentSchema = new mongoose.Schema(
     // Payment fields
     paymentId: { type: String },
     paymentStatus: { type: String, enum: ['pending', 'paid', 'refunded', 'failed'], default: 'pending' },
-    paymentMethod: { type: String, enum: ['cash', 'online', 'upi', 'card', 'insurance'], default: 'cash' },
+    paymentMethod: { type: String, enum: ['cash', 'online', 'upi', 'card', 'net_banking', 'insurance'], default: 'cash' },
     consultationFee: { type: Number },
+    registrationFee: { type: Number, default: 0 },
     // Telemedicine
     consultationMode: { type: String, enum: ['in-person', 'video', 'phone'], default: 'in-person' },
     videoRoomId: { type: String },
-    videoJoinUrl: { type: String }
+    videoJoinUrl: { type: String },
+    // HMS Vitals and Visit Data
+    vitals: {
+      height: { type: Number },
+      weight: { type: Number },
+      bmi: { type: Number },
+      bp: { type: String },
+      pulse: { type: Number },
+      temperature: { type: Number },
+      spo2: { type: Number },
+      bloodSugar: { type: Number }
+    },
+    chiefComplaint: { type: String },
+    diagnosis: { type: String },
+    prescriptionDetails: { type: String },
+    labOrders: [{ type: String }],
+    followUpDate: { type: Date }
   },
   { timestamps: true }
 );

@@ -50,6 +50,7 @@ const DUR_SHORTCUTS = ['3 days', '5 days', '7 days', '10 days', '14 days', '1 mo
 export default function VisitPad() {
   const [searchParams] = useSearchParams();
   const preselectedPatientId = searchParams.get('patientId');
+  const preselectedAppointmentId = searchParams.get('appointmentId');
 
   // Patient search
   const [patientQuery, setPatientQuery] = useState('');
@@ -83,6 +84,61 @@ export default function VisitPad() {
   const [printRx, setPrintRx] = useState(null);
   const [activeSection, setActiveSection] = useState('complaints');
 
+  const [currentAppointment, setCurrentAppointment] = useState(null);
+  const [waitingQueue, setWaitingQueue] = useState([]);
+  const [loadingQueue, setLoadingQueue] = useState(false);
+
+  const fetchWaitingQueue = async () => {
+    setLoadingQueue(true);
+    try {
+      const { data } = await api.get('/appointments/queue/today');
+      const filtered = (data || []).filter(apt => 
+        ['WAITING_FOR_DOCTOR', 'IN_CONSULTATION'].includes(apt.status)
+      );
+      setWaitingQueue(filtered);
+    } catch {
+      setWaitingQueue([]);
+    } finally {
+      setLoadingQueue(false);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 1) {
+      fetchWaitingQueue();
+    }
+  }, [step]);
+
+  const acceptWaitingPatient = async (apt) => {
+    try {
+      const { data } = await api.put(`/appointments/${apt._id}`, { status: 'IN_CONSULTATION' });
+      setCurrentAppointment(data);
+      const patient = apt.patientId;
+      setSelectedPatient(patient);
+      
+      setVitals({
+        bp: apt.vitals?.bp || '',
+        pulse: apt.vitals?.pulse || '',
+        weight: apt.vitals?.weight || '',
+        temp: apt.vitals?.temperature || '',
+        spo2: apt.vitals?.spo2 || '',
+        rbs: apt.vitals?.bloodSugar || '',
+        height: apt.vitals?.height || '',
+      });
+      
+      if (apt.chiefComplaint) {
+        setChiefComplaints([apt.chiefComplaint]);
+      } else {
+        setChiefComplaints([]);
+      }
+      
+      setStep(2);
+      toast.success(`Consultation started for ${patient.name}`);
+    } catch (e) {
+      toast.error('Failed to accept patient consultation request');
+    }
+  };
+
   // Load pre-selected patient
   const { data: prePatient } = useApi(preselectedPatientId ? `/patients/${preselectedPatientId}` : null);
   useEffect(() => {
@@ -90,7 +146,35 @@ export default function VisitPad() {
       setSelectedPatient(prePatient);
       setStep(2);
     }
-  }, [prePatient]);
+  }, [prePatient, selectedPatient]);
+
+  // Load pre-selected appointment
+  const { data: preAppointment } = useApi(preselectedAppointmentId ? `/appointments/${preselectedAppointmentId}` : null);
+  useEffect(() => {
+    if (preAppointment && !currentAppointment) {
+      setCurrentAppointment(preAppointment);
+      const patient = preAppointment.patientId;
+      setSelectedPatient(patient);
+      
+      setVitals({
+        bp: preAppointment.vitals?.bp || '',
+        pulse: preAppointment.vitals?.pulse || '',
+        weight: preAppointment.vitals?.weight || '',
+        temp: preAppointment.vitals?.temperature || '',
+        spo2: preAppointment.vitals?.spo2 || '',
+        rbs: preAppointment.vitals?.bloodSugar || '',
+        height: preAppointment.vitals?.height || '',
+      });
+      
+      if (preAppointment.chiefComplaint) {
+        setChiefComplaints([preAppointment.chiefComplaint]);
+      } else {
+        setChiefComplaints([]);
+      }
+      
+      setStep(2);
+    }
+  }, [preAppointment, currentAppointment]);
 
   // Patient search
   useEffect(() => {
@@ -202,7 +286,29 @@ export default function VisitPad() {
         specialty,
       };
       const { data } = await api.post('/prescriptions', payload);
+      
+      if (currentAppointment) {
+        await api.put(`/appointments/${currentAppointment._id}`, {
+          status: 'CONSULTATION_COMPLETED',
+          vitals: {
+            bp: vitals.bp || undefined,
+            pulse: vitals.pulse ? Number(vitals.pulse) : undefined,
+            weight: vitals.weight ? Number(vitals.weight) : undefined,
+            temperature: vitals.temp ? Number(vitals.temp) : undefined,
+            spo2: vitals.spo2 ? Number(vitals.spo2) : undefined,
+            bloodSugar: vitals.rbs ? Number(vitals.rbs) : undefined,
+            height: vitals.height ? Number(vitals.height) : undefined,
+          },
+          chiefComplaint: chiefComplaints.join(', '),
+          diagnosis,
+          prescriptionDetails: medicines.filter(m => m.name?.trim()).map(m => `${m.name} (${m.dosage || ''}) - ${m.frequency} for ${m.duration}`).join('\n')
+        });
+      }
+
       setSavedRx(data);
+      // Enrich patientId with full patient object so name/age/gender/UHID display correctly on print
+      const enrichedRx = { ...data, patientId: selectedPatient || data.patientId };
+      setPrintRx(enrichedRx); // Auto-open print prescription pad
       setStep(4);
       toast.success('Visit saved successfully!');
     } catch (err) {
@@ -228,6 +334,7 @@ export default function VisitPad() {
     setChiefComplaints([]); setVitals({ bp: '', pulse: '', weight: '', temp: '', spo2: '', rbs: '', height: '' });
     setDiagnosis(''); setNotes(''); setAdvice(''); setFollowUpDate('');
     setMedicines([{ ...emptyMed }]); setAiSuggestions(null); setDdiAlerts([]); setSavedRx(null);
+    setCurrentAppointment(null);
     setActiveSection('complaints');
   };
 
@@ -276,44 +383,105 @@ export default function VisitPad() {
 
       {/* ══════════ STEP 1: SELECT PATIENT ══════════ */}
       {step === 1 && (
-        <div className="card max-w-lg animate-fade-in">
-          <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <FiSearch className="text-teal-500" /> Find Patient
-          </h2>
-          <div className="relative">
-            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              value={patientQuery}
-              onChange={e => setPatientQuery(e.target.value)}
-              placeholder="Search by name, phone, or patient ID..."
-              className="input-field pl-9"
-              autoFocus
-            />
-          </div>
-          {searching && <p className="text-xs text-gray-400 mt-2">Searching...</p>}
-          {patientResults.length > 0 && (
-            <div className="mt-2 space-y-1">
-              {patientResults.map(p => (
-                <button
-                  key={p._id}
-                  onClick={() => { setSelectedPatient(p); setStep(2); setPatientQuery(''); setPatientResults([]); }}
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-teal-50 border border-transparent hover:border-teal-200 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-sm flex-shrink-0">
-                      {p.name?.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{p.name}</p>
-                      <p className="text-xs text-gray-500">{p.patientId} • {p.age ? `${p.age} yrs` : ''} • {p.phone || 'No phone'}</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
+          {/* Find Patient search */}
+          <div className="card h-fit">
+            <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              <FiSearch className="text-teal-500" /> Search Patient by ID / Name
+            </h2>
+            <div className="relative">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={patientQuery}
+                onChange={e => setPatientQuery(e.target.value)}
+                placeholder="Search by name, phone, or patient ID..."
+                className="input-field pl-9 text-sm"
+                autoFocus
+              />
             </div>
-          )}
-          <p className="text-xs text-gray-400 mt-4">Don't have the patient? <Link to="/patients" className="text-teal-600 font-medium">Add new patient →</Link></p>
+            {searching && <p className="text-xs text-gray-400 mt-2">Searching...</p>}
+            {patientResults.length > 0 && (
+              <div className="mt-2 space-y-1 max-h-[300px] overflow-y-auto custom-scroll">
+                {patientResults.map(p => (
+                  <button
+                    key={p._id}
+                    onClick={async () => {
+                      setPatientQuery('');
+                      setPatientResults([]);
+                      try {
+                        const { data } = await api.get('/appointments/queue/today');
+                        const apt = (data || []).find(a => 
+                          a.patientId?._id === p._id || a.patientId === p._id
+                        );
+                        if (apt) {
+                          acceptWaitingPatient(apt);
+                        } else {
+                          setSelectedPatient(p);
+                          setCurrentAppointment(null);
+                          setVitals({ bp: '', pulse: '', weight: '', temp: '', spo2: '', rbs: '', height: '' });
+                          setChiefComplaints([]);
+                          setStep(2);
+                        }
+                      } catch {
+                        setSelectedPatient(p);
+                        setCurrentAppointment(null);
+                        setStep(2);
+                      }
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-lg hover:bg-teal-50 border border-transparent hover:border-teal-200 transition-all text-xs"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs flex-shrink-0">
+                        {p.name?.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{p.name}</p>
+                        <p className="text-[10px] text-gray-500">{p.patientId} • {p.age ? `${p.age} yrs` : ''} • {p.phone || 'No phone'}</p>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+            <p className="text-[11px] text-gray-400 mt-4">Don't have the patient? <Link to="/patients" className="text-teal-600 font-medium">Add new patient →</Link></p>
+          </div>
+
+          {/* Clinical queue list */}
+          <div className="card">
+            <h2 className="text-base font-semibold text-gray-800 mb-4 flex items-center gap-2 border-b pb-2">
+              <FiActivity className="text-teal-500 animate-pulse" /> Pending Consultations (From Nurse)
+            </h2>
+            {loadingQueue ? (
+              <div className="py-8 text-center"><Loader label="Loading queue..." /></div>
+            ) : waitingQueue.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-400">
+                <FiClock className="mx-auto text-gray-300 text-lg mb-2" />
+                No patients waiting in queue from Nurse Station.
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-[350px] overflow-y-auto custom-scroll pr-1">
+                {waitingQueue.map(apt => (
+                  <div key={apt._id} className="p-3 border rounded-xl bg-gray-50/50 hover:border-teal-200 transition-all flex items-center justify-between text-xs">
+                    <div>
+                      <p className="font-bold text-gray-900">{apt.patientId?.name}</p>
+                      <p className="text-[10px] font-mono text-gray-500 mt-0.5">ID: {apt.patientId?.patientId} | Token: T-{apt.tokenNumber}</p>
+                      {apt.chiefComplaint && (
+                        <p className="text-[10px] text-red-500 italic mt-1">Complaint: "{apt.chiefComplaint}"</p>
+                      )}
+                      <p className="text-[10px] text-gray-400 mt-0.5">Vitals Checked: {apt.vitals?.bp ? `BP ${apt.vitals.bp}, Pulse ${apt.vitals.pulse}` : 'Partial'}</p>
+                    </div>
+                    <button
+                      onClick={() => acceptWaitingPatient(apt)}
+                      className="btn-primary !py-1.5 !px-3 text-[11px] flex items-center gap-1"
+                    >
+                      Accept <FiArrowRight />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -351,6 +519,59 @@ export default function VisitPad() {
                 ← Change patient
               </button>
             </div>
+
+            {/* Patient Vitals (Nurse Intake) Summary */}
+            {Object.values(vitals).some(v => v) && (
+              <div className="card bg-gray-50 border-gray-200 text-gray-700 p-4 space-y-2.5">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <FiActivity className="text-rose-500 animate-pulse" /> Patient Vitals (Nurse Intake)
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {vitals.bp && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-medium">Blood Pressure</span>
+                      <span className="font-bold text-gray-800">{vitals.bp} mmHg</span>
+                    </div>
+                  )}
+                  {vitals.pulse && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-medium">Pulse Rate</span>
+                      <span className="font-bold text-gray-800">{vitals.pulse} bpm</span>
+                    </div>
+                  )}
+                  {vitals.temp && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-medium">Temperature</span>
+                      <span className="font-bold text-gray-800">{vitals.temp} °F</span>
+                    </div>
+                  )}
+                  {vitals.weight && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-medium">Weight</span>
+                      <span className="font-bold text-gray-800">{vitals.weight} kg</span>
+                    </div>
+                  )}
+                  {vitals.height && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-medium">Height</span>
+                      <span className="font-bold text-gray-800">{vitals.height} cm</span>
+                    </div>
+                  )}
+                  {vitals.spo2 && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col">
+                      <span className="text-[10px] text-gray-400 font-medium">SpO₂</span>
+                      <span className="font-bold text-gray-800">{vitals.spo2} %</span>
+                    </div>
+                  )}
+                  {vitals.rbs && (
+                    <div className="bg-white p-2 rounded-lg border flex flex-col col-span-2">
+                      <span className="text-[10px] text-gray-400 font-medium">Blood Sugar (RBS)</span>
+                      <span className="font-bold text-gray-800">{vitals.rbs} mg/dL</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Specialty */}
             <div className="card">
@@ -838,7 +1059,7 @@ export default function VisitPad() {
           </div>
           <div className="flex flex-col gap-2">
             <button
-              onClick={() => setPrintRx(savedRx)}
+              onClick={() => setPrintRx({ ...savedRx, patientId: selectedPatient || savedRx.patientId })}
               className="btn-primary flex items-center justify-center gap-2"
             >
               <FiPrinter /> Print Prescription

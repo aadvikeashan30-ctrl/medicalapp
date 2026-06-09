@@ -28,8 +28,9 @@ const auth = async (req, res, next) => {
     const decoded = jwt.verify(token, secret);
 
     // Demo mode: if DB is not connected OR user has demo token, use demo user
-    if (!req.app.locals.dbConnected || decoded.userId === DEMO_USER_ID) {
-      req.user = DEMO_USER;
+    if (!req.app.locals.dbConnected || decoded.userId === DEMO_USER_ID || decoded.userId?.startsWith('doc-')) {
+      const demoRouter = require('../routes/demo');
+      req.user = (demoRouter.DEMO_USERS && demoRouter.DEMO_USERS[decoded.userId]) || DEMO_USER;
       return next();
     }
 

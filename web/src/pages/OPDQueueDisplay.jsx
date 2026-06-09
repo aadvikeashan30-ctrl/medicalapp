@@ -40,16 +40,16 @@ export default function OPDQueueDisplay() {
   // Find currently serving patient
   useEffect(() => {
     if (queue?.length) {
-      const inProgress = queue.find(a => a.status === 'in-progress');
+      const inProgress = queue.find(a => a.status === 'in-progress' || a.status === 'IN_CONSULTATION');
       setCurrentlyServing(inProgress || null);
     }
   }, [queue]);
 
   const callNext = async () => {
-    const nextPatient = queue?.find(a => a.status === 'scheduled' || a.status === 'confirmed');
+    const nextPatient = queue?.find(a => ['scheduled', 'confirmed', 'WAITING_FOR_DOCTOR', 'VITALS_COMPLETED'].includes(a.status));
     if (!nextPatient) { toast.error('No more patients in queue'); return; }
     try {
-      await api.put(`/appointments/${nextPatient._id}`, { status: 'in-progress' });
+      await api.put(`/appointments/${nextPatient._id}`, { status: 'IN_CONSULTATION' });
       toast.success(`Calling Token #${nextPatient.tokenNumber}: ${nextPatient.patientId?.name || 'Patient'}`);
       refetch();
     } catch { toast.error('Failed to call patient'); }
@@ -58,7 +58,7 @@ export default function OPDQueueDisplay() {
   const completeCurrentPatient = async () => {
     if (!currentlyServing) return;
     try {
-      await api.put(`/appointments/${currentlyServing._id}`, { status: 'completed' });
+      await api.put(`/appointments/${currentlyServing._id}`, { status: 'CONSULTATION_COMPLETED' });
       toast.success('Patient marked as done');
       refetch();
     } catch { toast.error('Failed to complete'); }
@@ -72,8 +72,8 @@ export default function OPDQueueDisplay() {
     } catch { toast.error('Failed'); }
   };
 
-  const waiting = queue?.filter(a => a.status === 'scheduled' || a.status === 'confirmed') || [];
-  const completed = queue?.filter(a => a.status === 'completed') || [];
+  const waiting = queue?.filter(a => ['scheduled', 'confirmed', 'WAITING_FOR_DOCTOR', 'VITALS_COMPLETED'].includes(a.status)) || [];
+  const completed = queue?.filter(a => ['completed', 'CONSULTATION_COMPLETED', 'CHECKOUT_COMPLETED'].includes(a.status)) || [];
   const totalToday = queue?.length || 0;
 
   const avgConsultTime = 8;

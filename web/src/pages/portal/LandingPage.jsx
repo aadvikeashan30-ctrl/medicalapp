@@ -178,12 +178,12 @@ export default function LandingPage() {
 
           <div className="text-center mt-12">
             <Link
-              to="/pricing"
+              to="/register"
               className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-8 py-4 rounded-2xl font-bold text-lg hover:shadow-2xl hover:shadow-violet-500/25 transition-all"
             >
-              <FaUserMd /> Start Free Trial — ₹0 for 30 days
+              <FaUserMd /> Register as Doctor
             </Link>
-            <p className="text-xs text-gray-400 mt-3">No credit card required. Cancel anytime.</p>
+            <p className="text-xs text-gray-400 mt-3">Join over 1,000+ doctors across India</p>
           </div>
         </div>
       </section>

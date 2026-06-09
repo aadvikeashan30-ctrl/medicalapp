@@ -13,8 +13,10 @@ router.get(
   '/',
   auth,
   asyncHandler(async (req, res) => {
-    const { date, status, page = 1, limit = 50 } = req.query;
-    const query = { doctorId: req.user._id };
+    const query = {};
+    if (req.user.role === 'doctor') {
+      query.doctorId = req.user._id;
+    }
 
     if (date) {
       const start = new Date(date);
@@ -49,15 +51,35 @@ router.get(
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const appointments = await Appointment.find({
-      doctorId: req.user._id,
+    const query = {
       date: { $gte: today, $lt: tomorrow },
-      status: { $in: ['scheduled', 'confirmed', 'in-progress'] }
-    })
+      status: { $in: ['scheduled', 'confirmed', 'in-progress', 'REGISTERED', 'PAYMENT_PENDING', 'PAYMENT_COMPLETED', 'VITALS_PENDING', 'VITALS_COMPLETED', 'WAITING_FOR_DOCTOR', 'IN_CONSULTATION', 'CONSULTATION_COMPLETED', 'CHECKOUT_COMPLETED'] }
+    };
+
+    if (req.user.role === 'doctor') {
+      query.doctorId = req.user._id;
+    }
+
+    const appointments = await Appointment.find(query)
       .populate('patientId', 'name phone patientId age gender')
       .sort({ tokenNumber: 1 });
 
     res.json(appointments);
+  })
+);
+
+// Get single appointment
+router.get(
+  '/:id',
+  auth,
+  asyncHandler(async (req, res) => {
+    const query = { _id: req.params.id };
+    if (req.user.role === 'doctor') {
+      query.doctorId = req.user._id;
+    }
+    const appointment = await Appointment.findOne(query).populate('patientId', 'name phone patientId age gender allergies');
+    if (!appointment) return res.status(404).json({ message: 'Appointment not found' });
+    res.json(appointment);
   })
 );
 
@@ -182,8 +204,12 @@ router.put(
   '/:id',
   auth,
   asyncHandler(async (req, res) => {
+    const query = { _id: req.params.id };
+    if (req.user.role === 'doctor') {
+      query.doctorId = req.user._id;
+    }
     const appointment = await Appointment.findOneAndUpdate(
-      { _id: req.params.id, doctorId: req.user._id },
+      query,
       req.body,
       { new: true, runValidators: true }
     ).populate('patientId', 'name phone patientId age gender');
@@ -192,13 +218,13 @@ router.put(
 
     // Emit real-time queue updates
     try {
-      if (req.body.status === 'in-progress') {
+      if (req.body.status === 'in-progress' || req.body.status === 'IN_CONSULTATION') {
         emitTokenCalled(appointment._id.toString(), appointment.tokenNumber);
-      } else if (req.body.status === 'completed') {
+      } else if (req.body.status === 'completed' || req.body.status === 'CONSULTATION_COMPLETED') {
         emitAppointmentCompleted(appointment._id.toString());
       }
       // Always emit queue update on any status change
-      emitQueueUpdate(req.user._id.toString());
+      emitQueueUpdate(appointment.doctorId.toString());
     } catch (e) { /* non-critical */ }
 
     res.json(appointment);

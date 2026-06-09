@@ -1,103 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiHome, FiUsers, FiCalendar, FiFileText, FiDollarSign,
-  FiSettings, FiLogOut, FiMenu, FiX, FiSearch, FiUser,
-  FiMoon, FiSun, FiPackage, FiActivity,
-  FiBarChart2, FiCreditCard, FiBell, FiGlobe,
-  FiHeart, FiUserPlus, FiClock, FiShield, FiMessageCircle,
-  FiCpu, FiMic, FiEdit3, FiAlertTriangle,
-  FiAward, FiGift, FiSend, FiStar, FiTrendingUp,
-  FiMapPin, FiDatabase
+  FiSettings, FiLogOut, FiSearch, FiMenu, FiX,
+  FiBell, FiActivity, FiPackage, FiBarChart2,
+  FiCreditCard, FiHeart, FiUserPlus, FiClock,
+  FiShield, FiMessageCircle, FiCpu, FiMic,
+  FiEdit3, FiAward, FiGift, FiSend, FiStar,
+  FiTrendingUp, FiMapPin, FiDatabase, FiGlobe,
+  FiChevronDown
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
-import { useDarkMode } from '../hooks/useDarkMode';
 import NotificationCenter from './NotificationCenter';
 
-const navGroups = [
-  {
-    label: 'Overview',
-    items: [
-      { path: '/', icon: FiHome, label: 'Dashboard', end: true },
-      { path: '/visit-pad', icon: FiActivity, label: 'Visit Pad', highlight: true },
-      { path: '/opd-queue', icon: FiStar, label: 'OPD Queue' },
-    ]
-  },
+/* ─── Primary nav items (shown in top bar) ───────────────────────── */
+const primaryNav = [
+  { path: '/',              icon: FiHome,      label: 'Dashboard',     end: true },
+  { path: '/receptionist',  icon: FiUserPlus,  label: 'Receptionist' },
+  { path: '/nurse',         icon: FiActivity,  label: 'Nurse Station' },
+  { path: '/patients',      icon: FiUsers,     label: 'Patients' },
+  { path: '/appointments',  icon: FiCalendar,  label: 'Appointments' },
+  { path: '/prescriptions', icon: FiFileText,  label: 'Prescriptions' },
+  { path: '/lab-tests',     icon: FiActivity,  label: 'Lab Reports' },
+  { path: '/billing',       icon: FiDollarSign,label: 'Billing' },
+  { path: '/medicines',     icon: FiPackage,   label: 'Pharmacy' },
+  { path: '/settings',      icon: FiSettings,  label: 'Settings' },
+];
+
+/* ─── Secondary nav (shown in mobile menu / more dropdown) ──────── */
+const moreNavGroups = [
   {
     label: 'Clinical',
     items: [
-      { path: '/patients', icon: FiUsers, label: 'Patients' },
-      { path: '/appointments', icon: FiCalendar, label: 'Appointments' },
-      { path: '/prescriptions', icon: FiFileText, label: 'Prescriptions' },
-      { path: '/medicines', icon: FiPackage, label: 'Medicines' },
-      { path: '/lab-tests', icon: FiActivity, label: 'Lab Tests' },
-      { path: '/patient-insights', icon: FiTrendingUp, label: 'Patient Insights' },
+      { path: '/visit-pad',        icon: FiActivity,      label: 'Visit Pad' },
+      { path: '/opd-queue',        icon: FiStar,          label: 'OPD Queue' },
+      { path: '/patient-insights', icon: FiTrendingUp,    label: 'Patient Insights' },
+      { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
+      { path: '/vaccinations',     icon: FiShield,        label: 'Vaccinations' },
     ]
   },
   {
-    label: 'Patient Features',
+    label: 'AI Tools',
     items: [
-      { path: '/health-records', icon: FiHeart, label: 'Health Records (PHR)' },
-      { path: '/family-accounts', icon: FiUserPlus, label: 'Family Accounts' },
-      { path: '/medicine-reminders', icon: FiClock, label: 'Medicine Reminders' },
-      { path: '/vaccinations', icon: FiShield, label: 'Vaccinations' },
-      { path: '/ai-assistant', icon: FiMessageCircle, label: 'AI Health Assistant' },
-      { path: '/ai-lab-analyzer', icon: FiSearch, label: 'AI Lab Analyzer' },
+      { path: '/ai-assistant',      icon: FiMessageCircle, label: 'AI Health Assistant' },
+      { path: '/ai-lab-analyzer',   icon: FiSearch,        label: 'AI Lab Analyzer' },
+      { path: '/voice-prescription',icon: FiMic,           label: 'Voice Prescription' },
+      { path: '/clinical-support',  icon: FiCpu,           label: 'Clinical Decision AI' },
+      { path: '/emr-templates',     icon: FiFileText,      label: 'EMR Templates' },
+      { path: '/e-signature',       icon: FiEdit3,         label: 'E-Signature' },
     ]
   },
   {
-    label: 'AI Doctor Tools',
+    label: 'Finance & Growth',
     items: [
-      { path: '/voice-prescription', icon: FiMic, label: 'Voice Prescription' },
-      { path: '/clinical-support', icon: FiCpu, label: 'Clinical Decision AI' },
-      { path: '/emr-templates', icon: FiFileText, label: 'EMR Templates' },
-      { path: '/e-signature', icon: FiEdit3, label: 'E-Signature' },
+      { path: '/expenses',         icon: FiCreditCard,    label: 'Expenses' },
+      { path: '/reports',          icon: FiBarChart2,     label: 'Reports' },
+      { path: '/memberships',      icon: FiAward,         label: 'Memberships' },
+      { path: '/health-packages',  icon: FiPackage,       label: 'Health Packages' },
+      { path: '/referrals',        icon: FiGift,          label: 'Referral Program' },
+      { path: '/campaigns',        icon: FiSend,          label: 'Campaigns' },
     ]
   },
   {
-    label: 'Finance',
+    label: 'Engage & Enterprise',
     items: [
-      { path: '/billing', icon: FiDollarSign, label: 'Billing' },
-      { path: '/expenses', icon: FiCreditCard, label: 'Expenses' },
-      { path: '/reports', icon: FiBarChart2, label: 'Reports' },
+      { path: '/follow-ups',      icon: FiBell,          label: 'Follow-ups' },
+      { path: '/patient-portal',  icon: FiGlobe,         label: 'Patient Portal' },
+      { path: '/family-accounts', icon: FiUserPlus,      label: 'Family Accounts' },
+      { path: '/medicine-reminders',icon: FiClock,       label: 'Medicine Reminders' },
+      { path: '/branches',        icon: FiMapPin,        label: 'Branches & Team' },
+      { path: '/audit-logs',      icon: FiDatabase,      label: 'Audit & Backup' },
     ]
   },
-  {
-    label: 'Business Growth',
-    items: [
-      { path: '/memberships', icon: FiAward, label: 'Memberships' },
-      { path: '/health-packages', icon: FiPackage, label: 'Health Packages' },
-      { path: '/referrals', icon: FiGift, label: 'Referral Program' },
-      { path: '/campaigns', icon: FiSend, label: 'Campaigns & Reviews' },
-    ]
-  },
-  {
-    label: 'Engage',
-    items: [
-      { path: '/follow-ups', icon: FiBell, label: 'Follow-ups' },
-      { path: '/patient-portal', icon: FiGlobe, label: 'Patient Portal' },
-    ]
-  },
-  {
-    label: 'Enterprise',
-    items: [
-      { path: '/branches', icon: FiMapPin, label: 'Branches & Team' },
-      { path: '/audit-logs', icon: FiDatabase, label: 'Audit & Backup' },
-    ]
-  }
 ];
 
-export default function Layout() {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [search, setSearch] = useState('');
-  const navigate = useNavigate();
-  const user = getUser();
+/* ─── Format current date/time ──────────────────────────────────── */
+function useClock() {
+  const [now, setNow] = useState(new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+  const days  = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months= ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const day   = days[now.getDay()];
+  const month = months[now.getMonth()];
+  const date  = now.getDate();
+  const year  = now.getFullYear();
+  const h     = now.getHours();
+  const m     = now.getMinutes().toString().padStart(2,'0');
+  const ampm  = h >= 12 ? 'PM' : 'AM';
+  const h12   = (h % 12 || 12).toString().padStart(2,'0');
+  return `${day}, ${month} ${date}, ${year}  ${h12}:${m} ${ampm}`;
+}
 
-  const handleLogout = () => {
-    clearSession();
-    navigate('/login');
-  };
+export default function Layout() {
+  const [mobileOpen, setMobileOpen]   = useState(false);
+  const [moreOpen,   setMoreOpen]     = useState(false);
+  const [search, setSearch]           = useState('');
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const user      = getUser();
+  const clock     = useClock();
+
+  const handleLogout = () => { clearSession(); navigate('/login'); };
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -106,148 +112,267 @@ export default function Layout() {
     setSearch('');
   };
 
+  /* Close dropdowns on route change */
+  useEffect(() => {
+    setMobileOpen(false);
+    setMoreOpen(false);
+  }, [location.pathname]);
+
+  const role = user?.role || 'doctor';
+
+  const filteredPrimaryNav = primaryNav.filter(item => {
+    if (role === 'receptionist') {
+      return item.path === '/receptionist' || item.path === '/settings';
+    }
+    if (role === 'nurse') {
+      return item.path === '/nurse' || item.path === '/settings';
+    }
+    return true;
+  });
+
+  const filteredMoreNavGroups = (role === 'receptionist' || role === 'nurse') ? [] : moreNavGroups;
+
+  /* Determine if current route is in "more" section */
+  const allMorePaths = filteredMoreNavGroups.flatMap(g => g.items.map(i => i.path));
+  const moreIsActive = allMorePaths.some(p =>
+    p === '/' ? location.pathname === '/' : location.pathname.startsWith(p)
+  );
+
+  /* Initials for avatar */
+  const initials = (user.name || 'D').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      {/* Background mesh */}
-      <div className="fixed inset-0 pointer-events-none" style={{ background: 'radial-gradient(at 30% 20%, rgba(99,102,241,0.03) 0%, transparent 50%), radial-gradient(at 80% 80%, rgba(16,185,129,0.02) 0%, transparent 50%)' }} />
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'var(--page-bg)' }}>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setMobileOpen(false)} />
-      )}
+      {/* ═══════════════════════════════════════════
+          TOP NAVIGATION BAR
+      ═══════════════════════════════════════════ */}
+      <header className="topnav flex-shrink-0">
+        <div className="flex items-center h-14 px-4 lg:px-6 gap-3">
 
-      {/* ═══════ SIDEBAR ═══════ */}
-      <aside
-        className={`fixed lg:static inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-out
-        sidebar-glass
-        ${sidebarOpen ? 'w-64' : 'w-[68px]'}
-        ${mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
-      >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-100">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' }}>
-            <FiActivity className="text-white text-sm" />
-          </div>
-          {sidebarOpen && (
-            <div className="animate-fade-up">
-              <h1 className="text-base font-bold text-gray-900">DocClinic</h1>
-              <p className="text-[10px] text-indigo-500 font-medium tracking-[0.15em] uppercase">Pro</p>
+          {/* Logo */}
+          <div className="flex items-center gap-2.5 flex-shrink-0 mr-2">
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: 'rgba(255,255,255,0.22)' }}
+            >
+              <FiActivity className="text-white text-base" />
             </div>
-          )}
-        </div>
+            <div className="hidden sm:block leading-tight">
+              <p className="text-white font-bold text-sm leading-none">MedCore Clinic</p>
+              <p className="text-white/60 text-[10px] leading-none mt-0.5">Hospital Management</p>
+            </div>
+          </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 overflow-y-auto custom-scroll space-y-5">
-          {navGroups.map((group) => (
-            <div key={group.label}>
-              {sidebarOpen && (
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-3 mb-2">{group.label}</p>
-              )}
-              <div className="space-y-0.5">
-                {group.items.map((item) => (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    end={item.end}
-                    className={({ isActive }) =>
-                      isActive ? 'sidebar-link-active' : 'sidebar-link'
-                    }
-                    onClick={() => setMobileOpen(false)}
-                    title={!sidebarOpen ? item.label : undefined}
+          {/* ── Primary Nav Links (desktop) ── */}
+          <nav className="hidden lg:flex items-center gap-0.5 flex-1 overflow-x-auto">
+            {filteredPrimaryNav.map(item => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.end}
+                className={({ isActive }) =>
+                  isActive ? 'nav-link-active' : 'nav-link'
+                }
+              >
+                <item.icon className="text-sm flex-shrink-0" />
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+
+            {/* More dropdown */}
+            <div className="relative">
+              {filteredMoreNavGroups.length > 0 && (
+                <>
+                  <button
+                    onClick={() => setMoreOpen(!moreOpen)}
+                    className={`nav-link flex items-center gap-1 ${moreIsActive ? 'text-white font-semibold' : ''}`}
                   >
-                    <item.icon className="text-lg flex-shrink-0" />
-                    {sidebarOpen && <span className="text-sm">{item.label}</span>}
-                  </NavLink>
-                ))}
-              </div>
-            </div>
-          ))}
-        </nav>
+                    More
+                    <FiChevronDown className={`text-xs transition-transform duration-200 ${moreOpen ? 'rotate-180' : ''}`} />
+                  </button>
 
-        {/* User card */}
-        <div className="p-3 border-t border-gray-100">
-          {sidebarOpen ? (
-            <div className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)' }}>
-                <span className="text-white text-xs font-bold">{(user.name || 'D')[0]}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">Dr. {user.name || 'Doctor'}</p>
-                <p className="text-[11px] text-gray-500 truncate capitalize">{user.plan || 'free'} plan</p>
-              </div>
+                  {moreOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
+                      <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 w-[680px] grid grid-cols-2 gap-6 animate-scale-in">
+                        {filteredMoreNavGroups.map(group => (
+                          <div key={group.label}>
+                            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">{group.label}</p>
+                            <div className="space-y-0.5">
+                              {group.items.map(item => (
+                                <NavLink
+                                  key={item.path}
+                                  to={item.path}
+                                  className={({ isActive }) =>
+                                    `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors duration-150 ${
+                                      isActive
+                                        ? 'bg-teal-50 text-teal-700 font-semibold'
+                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    }`
+                                  }
+                                >
+                                  <item.icon className="text-sm text-gray-400 flex-shrink-0" />
+                                  {item.label}
+                                </NavLink>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)' }}>
-                <span className="text-white text-xs font-bold">{(user.name || 'D')[0]}</span>
-              </div>
-            </div>
-          )}
-          <div className="flex items-center gap-1 mt-2">
-            <NavLink to="/profile" className="sidebar-link flex-1 !py-2 !text-xs" onClick={() => setMobileOpen(false)}>
-              <FiUser className="text-sm" />
-              {sidebarOpen && <span>Profile</span>}
-            </NavLink>
-            <NavLink to="/settings" className="sidebar-link flex-1 !py-2 !text-xs" onClick={() => setMobileOpen(false)}>
-              <FiSettings className="text-sm" />
-              {sidebarOpen && <span>Settings</span>}
-            </NavLink>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 mt-1 w-full rounded-xl text-rose-500 hover:bg-rose-50 transition-all font-medium text-xs"
-          >
-            <FiLogOut className="text-sm" />
-            {sidebarOpen && <span>Logout</span>}
-          </button>
-        </div>
-      </aside>
+          </nav>
 
-      {/* ═══════ MAIN ═══════ */}
-      <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Header */}
-        <header className="header-glass px-4 lg:px-6 py-3 flex items-center justify-between z-30 relative">
-          <div className="flex items-center gap-3">
-            <button onClick={() => setMobileOpen(!mobileOpen)} className="lg:hidden p-2 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors">
-              <FiMenu className="text-lg" />
-            </button>
-            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="hidden lg:flex p-2 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-              {sidebarOpen ? <FiX className="text-base" /> : <FiMenu className="text-base" />}
-            </button>
-
+          {/* ── Right section ── */}
+          <div className="flex items-center gap-2 ml-auto flex-shrink-0">
             {/* Search */}
             <form onSubmit={handleSearch} className="relative hidden md:block">
-              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50 text-sm pointer-events-none" />
               <input
                 type="text"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={e => setSearch(e.target.value)}
                 placeholder="Search patients..."
-                className="pl-9 pr-4 py-2 rounded-lg w-56 focus:w-72 text-sm text-gray-900 placeholder:text-gray-400 bg-gray-50 border border-gray-200 outline-none transition-all duration-300 focus:border-indigo-300 focus:bg-white"
-                style={{ boxShadow: 'none' }}
+                className="pl-9 pr-4 py-1.5 rounded-lg w-48 focus:w-60 text-sm text-white placeholder:text-white/50 outline-none transition-all duration-300"
+                style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)' }}
+                onFocus={e => e.target.style.background = 'rgba(255,255,255,0.22)'}
+                onBlur={e => e.target.style.background  = 'rgba(255,255,255,0.15)'}
               />
             </form>
-          </div>
 
-          <div className="flex items-center gap-1.5">
-            <NotificationCenter />
-            <div className="hidden sm:flex items-center gap-2 pl-3 ml-1.5 border-l border-gray-200">
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user.clinicName || 'My Clinic'}</p>
-                <p className="text-[11px] text-gray-500 capitalize flex items-center gap-1.5 justify-end">
-                  <span className="status-dot status-online" />
-                  {user.plan || 'free'}
+            {/* Date/Time */}
+            <div className="hidden xl:block text-right leading-tight">
+              <p className="text-white/90 text-xs font-medium">{clock}</p>
+            </div>
+
+            {/* Notification bell */}
+            <div className="relative">
+              <NotificationCenter />
+            </div>
+
+            {/* Doctor profile */}
+            <div className="flex items-center gap-2 pl-2 ml-1 border-l border-white/20">
+              <div className="hidden sm:block text-right leading-tight">
+                <p className="text-white text-xs font-semibold">
+                  {role === 'doctor' || !user.role ? 'Dr. ' : ''}{user.name || 'User'}
+                </p>
+                <p className="text-white/60 text-[10px]">
+                  {role === 'receptionist' ? 'Receptionist' : role === 'nurse' ? 'Nurse Station' : (user.specialty || 'General Physician')}
                 </p>
               </div>
+              <div className="relative group">
+                <button
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white flex-shrink-0 transition-transform duration-200 hover:scale-105"
+                  style={{ background: 'rgba(255,255,255,0.22)' }}
+                  title="Account menu"
+                >
+                  {initials}
+                </button>
+                {/* Dropdown */}
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 animate-fade-in">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {role === 'doctor' || !user.role ? 'Dr. ' : ''}{user.name || 'User'}
+                    </p>
+                    <p className="text-xs text-gray-500 capitalize">{role || 'Doctor'}</p>
+                  </div>
+                  <NavLink to="/profile" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <FiSearch className="text-gray-400 text-sm" /> My Profile
+                  </NavLink>
+                  <NavLink to="/settings" className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
+                    <FiSettings className="text-gray-400 text-sm" /> Settings
+                  </NavLink>
+                  <div className="border-t border-gray-100 mt-1 pt-1">
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full transition-colors"
+                    >
+                      <FiLogOut className="text-sm" /> Sign Out
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </header>
 
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scroll relative">
+            {/* Mobile hamburger */}
+            <button
+              className="lg:hidden p-1.5 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              onClick={() => setMobileOpen(!mobileOpen)}
+            >
+              {mobileOpen ? <FiX className="text-lg" /> : <FiMenu className="text-lg" />}
+            </button>
+          </div>
+        </div>
+
+        {/* ── Mobile Nav Drawer ── */}
+        {mobileOpen && (
+          <div className="lg:hidden border-t border-white/15 bg-nav-dark px-4 py-4 animate-fade-in max-h-[80vh] overflow-y-auto custom-scroll"
+               style={{ background: 'var(--nav-bg-dark)' }}>
+            {/* Primary links */}
+            <div className="grid grid-cols-2 gap-1 mb-4">
+              {filteredPrimaryNav.map(item => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  end={item.end}
+                  className={({ isActive }) =>
+                    isActive
+                      ? 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-white text-gray-800'
+                      : 'flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-white/80 hover:text-white hover:bg-white/10'
+                  }
+                >
+                  <item.icon className="text-sm" />
+                  {item.label}
+                </NavLink>
+              ))}
+            </div>
+
+            {/* More groups */}
+            {filteredMoreNavGroups.map(group => (
+              <div key={group.label} className="mb-3">
+                <p className="text-[10px] font-semibold text-white/40 uppercase tracking-wider px-3 mb-1">{group.label}</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {group.items.map(item => (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        isActive
+                          ? 'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-white text-gray-800'
+                          : 'flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-white/70 hover:text-white hover:bg-white/10'
+                      }
+                    >
+                      <item.icon className="text-xs flex-shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Logout */}
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 mt-3 rounded-lg text-sm text-red-300 hover:bg-red-900/30 w-full transition-colors"
+            >
+              <FiLogOut className="text-sm" /> Sign Out
+            </button>
+          </div>
+        )}
+      </header>
+
+      {/* ═══════════════════════════════════════════
+          MAIN CONTENT
+      ═══════════════════════════════════════════ */}
+      <main className="flex-1 overflow-y-auto custom-scroll">
+        <div className="p-4 lg:p-6 max-w-screen-2xl mx-auto">
           <Outlet />
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

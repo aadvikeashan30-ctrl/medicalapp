@@ -17,22 +17,43 @@ export default function Login() {
     try {
       const { data } = await api.post('/auth/login', form);
       setSession(data.token, data.user);
-      toast.success(`Welcome back, Dr. ${data.user.name}!`);
+      const isDoc = data.user.role === 'doctor' || !data.user.role;
+      toast.success(`Welcome back, ${isDoc ? 'Dr. ' : ''}${data.user.name}!`);
       navigate('/');
     } catch (error) {
       const isNetworkOrServerError = !error.response || error.response.status >= 500;
-      const isDemoCredentials = form.email === 'demo@docclinic.com' && form.password === 'demo1234';
+      const isDemoDoc = form.email === 'demo@docclinic.com' && form.password === 'demo1234';
+      const isDemoReceptionist = form.email === 'receptionist@docclinic.com' && form.password === 'receptionist1234';
+      const isDemoNurse = form.email === 'nurse@docclinic.com' && form.password === 'nurse1234';
 
-      if (isNetworkOrServerError && isDemoCredentials) {
-        const demoUser = {
-          _id: 'demo-doctor-001', id: 'demo-doctor-001',
-          name: 'Demo Doctor', email: 'demo@docclinic.com',
-          phone: '9000000000', role: 'doctor', specialty: 'general',
-          qualification: 'MBBS, MD', clinicName: 'DocClinic Demo Centre',
-          clinicCity: 'Mumbai', consultationFee: 500, plan: 'pro', isActive: true
-        };
+      if (isNetworkOrServerError && (isDemoDoc || isDemoReceptionist || isDemoNurse)) {
+        let demoUser = {};
+        if (isDemoDoc) {
+          demoUser = {
+            _id: 'demo-doctor-001', id: 'demo-doctor-001',
+            name: 'Demo Doctor', email: 'demo@docclinic.com',
+            phone: '9000000000', role: 'doctor', specialty: 'general',
+            qualification: 'MBBS, MD', clinicName: 'DocClinic Demo Centre',
+            clinicCity: 'Mumbai', consultationFee: 500, plan: 'pro', isActive: true
+          };
+        } else if (isDemoReceptionist) {
+          demoUser = {
+            _id: 'demo-receptionist-001', id: 'demo-receptionist-001',
+            name: 'Receptionist Mary', email: 'receptionist@docclinic.com',
+            phone: '9111111111', role: 'receptionist', specialty: 'general',
+            clinicName: 'DocClinic Demo Centre', clinicCity: 'Mumbai', plan: 'pro', isActive: true
+          };
+        } else if (isDemoNurse) {
+          demoUser = {
+            _id: 'demo-nurse-001', id: 'demo-nurse-001',
+            name: 'Nurse Nancy', email: 'nurse@docclinic.com',
+            phone: '9222222222', role: 'nurse', specialty: 'general',
+            clinicName: 'DocClinic Demo Centre', clinicCity: 'Mumbai', plan: 'pro', isActive: true
+          };
+        }
         setSession('demo-token-' + Date.now(), demoUser);
-        toast.success(`Welcome back, Dr. ${demoUser.name}! (Demo Mode)`);
+        const isDoc = demoUser.role === 'doctor';
+        toast.success(`Welcome back, ${isDoc ? 'Dr. ' : ''}${demoUser.name}! (Demo Mode)`);
         navigate('/');
       } else {
         toast.error(error.response?.data?.message || 'Login failed');
@@ -209,7 +230,7 @@ export default function Login() {
           <p className="text-center mt-8 text-sm text-gray-500">
             New to DocClinic?{' '}
             <Link to="/register" className="text-indigo-600 font-semibold hover:text-indigo-700 transition-colors">
-              Start Free Trial
+              Create an Account
             </Link>
           </p>
         </div>

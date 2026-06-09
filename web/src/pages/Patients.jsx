@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   FiSearch, FiPlus, FiPhone, FiUser, FiX, FiEdit2, FiTrash2, FiUsers,
-  FiDownload, FiExternalLink
+  FiDownload, FiExternalLink, FiHash
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -322,6 +322,30 @@ export default function Patients() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Patient ID — show existing ID when editing, preview notice when adding */}
+              {editing ? (
+                <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl">
+                  <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+                    <FiHash className="text-white text-sm" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-blue-600 font-medium uppercase tracking-wide">Patient ID</p>
+                    <p className="font-mono font-bold text-lg text-blue-800 leading-tight">{editing.patientId || 'Not assigned'}</p>
+                  </div>
+                  <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-lg font-medium">Permanent · Cannot change</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500 flex items-center justify-center flex-shrink-0">
+                    <FiHash className="text-white text-sm" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-indigo-600 font-semibold">Patient ID</p>
+                    <p className="text-sm text-indigo-700">Will be auto-assigned on save <span className="font-mono font-bold">(e.g. PAT-0001)</span></p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>

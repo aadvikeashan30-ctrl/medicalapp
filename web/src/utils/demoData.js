@@ -165,6 +165,15 @@ export function getDemoResponse(url) {
   const path = url.split('?')[0].replace(/^\/api/, '').replace(/\/$/, '');
   const cleanPath = path.startsWith('/') ? path : '/' + path;
   
+  if (cleanPath === '/auth/profile') {
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        return JSON.parse(userStr);
+      } catch (e) {}
+    }
+  }
+
   // Try exact match first
   if (DEMO_RESPONSES[cleanPath]) return DEMO_RESPONSES[cleanPath];
   

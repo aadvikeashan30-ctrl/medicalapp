@@ -26,12 +26,23 @@ function signToken(userId) {
 function publicUser(u) {
   return {
     id: u._id,
+    _id: u._id,
     name: u.name,
     email: u.email,
+    phone: u.phone,
     role: u.role,
     specialty: u.specialty,
+    qualification: u.qualification,
+    registrationNo: u.registrationNo,
     clinicName: u.clinicName,
-    plan: u.plan
+    clinicAddress: u.clinicAddress,
+    clinicCity: u.clinicCity,
+    consultationFee: u.consultationFee,
+    workingHours: u.workingHours,
+    experience: u.experience,
+    plan: u.plan,
+    planExpiry: u.planExpiry,
+    isActive: u.isActive
   };
 }
 
@@ -61,8 +72,7 @@ router.post(
       clinicName,
       clinicCity,
       qualification,
-      plan: 'free',
-      planExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+      plan: 'free'
     });
 
     res.status(201).json({ token: signToken(user._id), user: publicUser(user) });

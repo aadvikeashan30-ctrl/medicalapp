@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { FiPlus, FiClock, FiCheck, FiX, FiPlay, FiCalendar } from 'react-icons/fi';
+import { FiPlus, FiClock, FiCheck, FiX, FiPlay, FiCalendar, FiHash } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import AIScheduleInsights from '../components/AIScheduleInsights';
+import PatientSearchSelect from '../components/PatientSearchSelect';
 
 const timeSlots = [
   '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
@@ -266,18 +267,13 @@ export default function Appointments() {
             <form onSubmit={submit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Patient *</label>
-                <select
-                  className="input-field" value={form.patientId}
-                  onChange={(e) => setForm({ ...form, patientId: e.target.value })}
+                <PatientSearchSelect
+                  patients={patients}
+                  value={form.patientId}
+                  onChange={(id) => setForm({ ...form, patientId: id })}
                   required
-                >
-                  <option value="">Select patient...</option>
-                  {patients.map((p) => (
-                    <option key={p._id} value={p._id}>
-                      {p.name} ({p.patientId})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Search by name or Patient ID..."
+                />
                 {patients.length === 0 && (
                   <p className="text-xs text-orange-600 mt-1">
                     No patients yet. Add a patient first from the Patients page.

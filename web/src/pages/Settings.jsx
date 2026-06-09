@@ -208,27 +208,13 @@ export default function Settings() {
   const [form, setForm] = useState(null);
   const [pw, setPw] = useState({ currentPassword: '', newPassword: '', confirm: '' });
 
-  // Initialize form from profile OR from localStorage user as fallback
+  // Initialize form from profile API OR from localStorage user as fallback
+  // Use a ref to prevent overwriting edits after a save
+  const initializedRef = React.useRef(false);
+
   useEffect(() => {
-    if (profile) {
-      setForm({
-        name: profile.name || '',
-        email: profile.email || '',
-        phone: profile.phone || '',
-        specialty: profile.specialty || 'general',
-        qualification: profile.qualification || '',
-        registrationNo: profile.registrationNo || '',
-        clinicName: profile.clinicName || '',
-        clinicAddress: profile.clinicAddress || '',
-        clinicCity: profile.clinicCity || '',
-        consultationFee: profile.consultationFee ?? 500,
-        workingHours: {
-          start: profile.workingHours?.start || '09:00',
-          end: profile.workingHours?.end || '18:00'
-        }
-      });
-    } else if (error && !form) {
-      // Fallback: use local user data so page doesn't stay stuck
+    // Always initialize from localStorage immediately on mount
+    if (!initializedRef.current) {
       const localUser = getUser();
       setForm({
         name: localUser.name || '',
@@ -247,7 +233,30 @@ export default function Settings() {
         }
       });
     }
-  }, [profile, error]);
+  }, []);
+
+  // When API profile loads, update form with fresher data (only if not yet saved by user)
+  useEffect(() => {
+    if (profile && !initializedRef.current) {
+      initializedRef.current = true;
+      setForm({
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        specialty: profile.specialty || 'general',
+        qualification: profile.qualification || '',
+        registrationNo: profile.registrationNo || '',
+        clinicName: profile.clinicName || '',
+        clinicAddress: profile.clinicAddress || '',
+        clinicCity: profile.clinicCity || '',
+        consultationFee: profile.consultationFee ?? 500,
+        workingHours: {
+          start: profile.workingHours?.start || '09:00',
+          end: profile.workingHours?.end || '18:00'
+        }
+      });
+    }
+  }, [profile]);
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -255,17 +264,42 @@ export default function Settings() {
     try {
       const { data } = await api.put('/auth/profile', form);
       const localUser = getUser();
-      setSession(localStorage.getItem('token'), {
+      // Merge ALL returned fields + form values into the local session
+      const updatedUser = {
         ...localUser,
-        name: data.name || form.name,
-        email: data.email || form.email,
-        phone: data.phone || form.phone,
-        specialty: data.specialty || form.specialty,
-        clinicName: data.clinicName || form.clinicName,
-        clinicCity: data.clinicCity || form.clinicCity,
-        consultationFee: data.consultationFee || form.consultationFee,
-        qualification: data.qualification || form.qualification,
-        plan: data.plan || localUser.plan
+        name: data.name ?? form.name,
+        email: data.email ?? form.email,
+        phone: data.phone ?? form.phone,
+        specialty: data.specialty ?? form.specialty,
+        qualification: data.qualification ?? form.qualification,
+        registrationNo: data.registrationNo ?? form.registrationNo,
+        clinicName: data.clinicName ?? form.clinicName,
+        clinicAddress: data.clinicAddress ?? form.clinicAddress,
+        clinicCity: data.clinicCity ?? form.clinicCity,
+        consultationFee: data.consultationFee ?? form.consultationFee,
+        workingHours: data.workingHours ?? form.workingHours,
+        plan: data.plan ?? localUser.plan,
+        planExpiry: data.planExpiry ?? localUser.planExpiry
+      };
+      setSession(localStorage.getItem('token'), updatedUser);
+      // Mark as initialized so the API re-fetch doesn't overwrite the freshly saved data
+      initializedRef.current = true;
+      // Also update the form so displayed values stay fresh
+      setForm({
+        name: updatedUser.name || '',
+        email: updatedUser.email || '',
+        phone: updatedUser.phone || '',
+        specialty: updatedUser.specialty || 'general',
+        qualification: updatedUser.qualification || '',
+        registrationNo: updatedUser.registrationNo || '',
+        clinicName: updatedUser.clinicName || '',
+        clinicAddress: updatedUser.clinicAddress || '',
+        clinicCity: updatedUser.clinicCity || '',
+        consultationFee: updatedUser.consultationFee ?? 500,
+        workingHours: {
+          start: updatedUser.workingHours?.start || '09:00',
+          end: updatedUser.workingHours?.end || '18:00'
+        }
       });
       toast.success('Settings saved successfully!');
     } catch (err) {
@@ -357,7 +391,7 @@ export default function Settings() {
                 <p className="text-sm text-gray-500">
                   {profile?.planExpiry
                     ? `Valid until ${new Date(profile.planExpiry).toLocaleDateString('en-IN')}`
-                    : '30-day free trial'}
+                    : 'Standard Free Tier'}
                 </p>
               </div>
             </div>

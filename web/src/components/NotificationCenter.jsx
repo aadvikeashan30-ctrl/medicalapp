@@ -53,19 +53,22 @@ export default function NotificationCenter() {
     <div className="relative" ref={panelRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 rounded-xl hover:bg-gray-100 transition-colors"
+        className="relative p-2 rounded-lg transition-colors"
+        style={{ background: 'rgba(255,255,255,0.12)' }}
+        onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.22)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
         aria-label="Notifications"
       >
-        <FiBell className="text-xl text-gray-600" />
+        <FiBell className="text-lg text-white/90" />
         {unreadCount > 0 && (
-          <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white flex items-center justify-center">
-            <span className="text-[10px] font-bold text-white">{unreadCount}</span>
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 rounded-full border border-white/40 flex items-center justify-center">
+            <span className="text-[9px] font-bold text-white">{unreadCount}</span>
           </span>
         )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-14 w-96 max-h-[520px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-scale-in">
+        <div className="absolute right-0 top-full mt-2 w-96 max-h-[520px] bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-scale-in">
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
             <div>
