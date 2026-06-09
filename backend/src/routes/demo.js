@@ -991,5 +991,137 @@ router.post('/doctor/summarize-notes', demoOnly, (req, res) => {
   });
 });
 
+// ==================== AMBIENT AI SCRIBE / TRIAGE / RX-GUARD ====================
+router.post('/doctor/scribe', demoOnly, (req, res) => {
+  const t = (req.body.transcript || '').slice(0, 140);
+  res.json({
+    patientId: req.body.patientId || null,
+    soap: {
+      subjective: t || 'Patient reports cough and mild fever for 3 days, no breathing difficulty.',
+      objective: 'Temp 100.8F, throat mildly congested, chest clear, SpO2 98%.',
+      assessment: 'Acute viral upper respiratory infection.',
+      plan: 'Symptomatic treatment, hydration, review in 5 days if not improving.'
+    },
+    icd10Suggestions: [{ code: 'J06.9', description: 'Acute upper respiratory infection, unspecified' }],
+    keyFindings: ['No red flags', 'Vitals stable'],
+    followUpSuggested: '5 days',
+    draftPrescription: {
+      diagnosis: 'Acute viral URI',
+      symptoms: ['cough', 'fever'],
+      medicines: [
+        { name: 'Paracetamol', dosage: '500mg', frequency: '1-0-1', duration: '3 days', timing: 'after-food', notes: 'For fever' },
+        { name: 'Cetirizine', dosage: '10mg', frequency: '0-0-1', duration: '5 days', timing: 'bedtime', notes: 'For congestion' }
+      ],
+      tests: [],
+      advice: 'Rest, warm fluids, steam inhalation.',
+      vitals: { temperature: 100.8, spo2: 98 }
+    },
+    disclaimer: 'AI-generated draft from the consultation transcript. Review and edit before signing off.'
+  });
+});
+
+router.get('/doctor/triage/:appointmentId', demoOnly, (req, res) => {
+  const appt = DEMO_APPOINTMENTS.find((a) => a._id === req.params.appointmentId) || DEMO_APPOINTMENTS[3];
+  const patient = appt.patientId || DEMO_PATIENTS[3];
+  res.json({
+    appointmentId: appt._id,
+    patient: { _id: patient._id, name: patient.name, age: patient.age, gender: patient.gender },
+    tokenNumber: appt.tokenNumber,
+    timeSlot: appt.timeSlot,
+    primaryConcern: appt.symptoms || 'Routine review',
+    bullets: [
+      `${patient.age}y ${patient.gender} presenting with ${appt.symptoms || 'follow-up review'}`,
+      (patient.allergies || []).length ? `Known allergy: ${patient.allergies.join(', ')}` : 'No known drug allergies',
+      'Confirm current medications and recent vitals'
+    ],
+    suggestedFocus: 'Clarify duration and severity of the chief complaint',
+    redFlags: [],
+    urgency: 'routine'
+  });
+});
+
+router.post('/doctor/rx-guard', demoOnly, (req, res) => {
+  const names = (req.body.medicines || []).map((m) => (typeof m === 'string' ? m : m.name)).filter(Boolean);
+  const weight = Number(req.body.weightKg) || null;
+  const age = req.body.ageYears != null ? Number(req.body.ageYears) : null;
+  const isPediatric = (age != null && age <= 12) || (weight && weight <= 40);
+  const table = { paracetamol: 15, ibuprofen: 10, amoxicillin: 40 };
+  const dosing = (isPediatric && weight)
+    ? names.map((n) => {
+        const k = n.toLowerCase();
+        const mgkg = table[k];
+        if (!mgkg) return { found: false, drug: n, message: 'No reference dosing on file.' };
+        return { found: true, drug: k, weightKg: weight, perDoseMg: Math.round(mgkg * weight * 10) / 10, dosesPerDay: 3, frequency: '3 times/day', route: 'oral', note: 'Weight-based estimate.' };
+      })
+    : [];
+  res.json({
+    medicines: names,
+    patientContext: { ageYears: age, weightKg: weight, allergies: [], isPediatric: !!isPediatric },
+    interactions: names.length >= 2 ? [{ drug1: names[0], drug2: names[1], severity: 'minor', description: 'No significant interaction expected. Monitor as usual.' }] : [],
+    allergyAlerts: [],
+    dosing,
+    hasCriticalAlerts: false,
+    disclaimer: 'Automated safety check for reference only. Clinical judgment is required before prescribing.'
+  });
+});
+
+// ==================== WAITLIST ====================
+const DEMO_WAITLIST = [
+  { _id: 'wl-1', patientName: 'Kavita Nair', patientPhone: '9876500011', service: 'MRI', priority: 'high', status: 'waiting', preferredDate: new Date(Date.now() + 2 * 86400000).toISOString(), note: 'Knee MRI — flexible timing', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+  { _id: 'wl-2', patientName: 'Rahul Verma', patientPhone: '9876500022', service: 'consultation', priority: 'normal', status: 'waiting', note: 'Prefers mornings', createdAt: new Date(Date.now() - 86400000).toISOString() },
+  { _id: 'wl-3', patientName: 'Meena Iyer', patientPhone: '9876500033', service: 'CT scan', priority: 'high', status: 'notified', notifiedAt: new Date().toISOString(), notifyCount: 1, createdAt: new Date(Date.now() - 3 * 86400000).toISOString() }
+];
+
+router.get('/waitlist', demoOnly, (req, res) => {
+  let list = [...DEMO_WAITLIST];
+  if (req.query.status) list = list.filter((w) => w.status === req.query.status);
+  if (req.query.service) list = list.filter((w) => w.service === req.query.service);
+  res.json({ entries: list, total: list.length });
+});
+
+router.get('/waitlist/stats/summary', demoOnly, (req, res) => {
+  res.json({
+    waiting: DEMO_WAITLIST.filter((w) => w.status === 'waiting').length,
+    notified: DEMO_WAITLIST.filter((w) => w.status === 'notified').length,
+    booked: DEMO_WAITLIST.filter((w) => w.status === 'booked').length,
+    high: DEMO_WAITLIST.filter((w) => w.status === 'waiting' && w.priority === 'high').length
+  });
+});
+
+router.post('/waitlist', demoOnly, (req, res) => {
+  const entry = { _id: `wl-${Date.now()}`, status: 'waiting', notifyCount: 0, createdAt: new Date().toISOString(), ...req.body };
+  DEMO_WAITLIST.unshift(entry);
+  res.status(201).json(entry);
+});
+
+router.post('/waitlist/:id/notify', demoOnly, (req, res) => {
+  const entry = DEMO_WAITLIST.find((w) => w._id === req.params.id);
+  if (!entry) return res.status(404).json({ message: 'Waitlist entry not found' });
+  entry.status = 'notified';
+  entry.notifiedAt = new Date().toISOString();
+  entry.notifyCount = (entry.notifyCount || 0) + 1;
+  res.json({ message: 'Patient notified', delivery: { success: true, stubbed: true }, entry });
+});
+
+router.post('/waitlist/fill', demoOnly, (req, res) => {
+  const waiting = DEMO_WAITLIST.filter((w) => w.status === 'waiting').slice(0, req.body.limit || 5);
+  waiting.forEach((e) => { e.status = 'notified'; e.notifiedAt = new Date().toISOString(); e.notifyCount = (e.notifyCount || 0) + 1; });
+  res.json({ notified: waiting.length, message: `Notified ${waiting.length} waitlisted patient(s)`, entries: waiting });
+});
+
+router.put('/waitlist/:id', demoOnly, (req, res) => {
+  const entry = DEMO_WAITLIST.find((w) => w._id === req.params.id);
+  if (!entry) return res.status(404).json({ message: 'Waitlist entry not found' });
+  Object.assign(entry, req.body);
+  res.json(entry);
+});
+
+router.delete('/waitlist/:id', demoOnly, (req, res) => {
+  const idx = DEMO_WAITLIST.findIndex((w) => w._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Waitlist entry not found' });
+  DEMO_WAITLIST.splice(idx, 1);
+  res.json({ message: 'Removed from waitlist' });
+});
+
 module.exports = router;
 module.exports.DEMO_USERS = DEMO_USERS;

@@ -33,6 +33,9 @@ import ESignaturePage from './pages/ESignature';
 import MedicalCertificates from './pages/MedicalCertificates';
 import DoctorAvailability from './pages/DoctorAvailability';
 import PracticeAnalytics from './pages/PracticeAnalytics';
+import AIScribe from './pages/AIScribe';
+import PrescriptionGuard from './pages/PrescriptionGuard';
+import Waitlist from './pages/Waitlist';
 import Memberships from './pages/Memberships';
 import HealthPackages from './pages/HealthPackages';
 import Campaigns from './pages/Campaigns';
@@ -142,6 +145,9 @@ export default function App() {
           <Route path="certificates" element={<MedicalCertificates />} />
           <Route path="availability" element={<DoctorAvailability />} />
           <Route path="practice-analytics" element={<PracticeAnalytics />} />
+          <Route path="ai-scribe" element={<AIScribe />} />
+          <Route path="rx-guard" element={<PrescriptionGuard />} />
+          <Route path="waitlist" element={<Waitlist />} />
           <Route path="memberships" element={<Memberships />} />
           <Route path="health-packages" element={<HealthPackages />} />
           <Route path="campaigns" element={<Campaigns />} />

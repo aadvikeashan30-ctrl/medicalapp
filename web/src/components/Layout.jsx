@@ -34,6 +34,7 @@ const moreNavGroups = [
     items: [
       { path: '/visit-pad',        icon: FiActivity,      label: 'Visit Pad' },
       { path: '/opd-queue',        icon: FiStar,          label: 'OPD Queue' },
+      { path: '/waitlist',         icon: FiClock,         label: 'Waitlist Auto-Fill' },
       { path: '/patient-insights', icon: FiTrendingUp,    label: 'Patient Insights' },
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
       { path: '/vaccinations',     icon: FiShield,        label: 'Vaccinations' },
@@ -44,8 +45,10 @@ const moreNavGroups = [
   {
     label: 'AI Tools',
     items: [
+      { path: '/ai-scribe',         icon: FiMic,           label: 'Ambient AI Scribe' },
       { path: '/ai-assistant',      icon: FiMessageCircle, label: 'AI Health Assistant' },
       { path: '/ai-lab-analyzer',   icon: FiSearch,        label: 'AI Lab Analyzer' },
+      { path: '/rx-guard',          icon: FiShield,        label: 'Rx Interaction Guard' },
       { path: '/voice-prescription',icon: FiMic,           label: 'Voice Prescription' },
       { path: '/clinical-support',  icon: FiCpu,           label: 'Clinical Decision AI' },
       { path: '/emr-templates',     icon: FiFileText,      label: 'EMR Templates' },

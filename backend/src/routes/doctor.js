@@ -289,6 +289,155 @@ router.post(
   })
 );
 
+// ========== AMBIENT AI CONSULTATION SCRIBE ==========
+
+// Turn a live consultation transcript into a sign-off-ready structured note
+// (SOAP summary + draft prescription) so the doctor reviews instead of typing.
+router.post(
+  '/scribe',
+  auth,
+  asyncHandler(async (req, res) => {
+    const { transcript, patientId } = req.body;
+    if (!transcript || !transcript.trim()) {
+      return res.status(400).json({ message: 'Consultation transcript is required' });
+    }
+
+    const aiService = require('../services/aiService');
+
+    // Run summary + prescription extraction together
+    const [note, rx] = await Promise.all([
+      aiService.summarizeNotes({ text: transcript, type: 'voice' }),
+      aiService.voiceToPrescription(transcript)
+    ]);
+
+    res.json({
+      patientId: patientId || null,
+      soap: note.soap || null,
+      icd10Suggestions: note.icd10Suggestions || [],
+      keyFindings: note.keyFindings || [],
+      followUpSuggested: note.followUpSuggested || rx.followUpDays || null,
+      draftPrescription: {
+        diagnosis: rx.diagnosis || note?.soap?.assessment || '',
+        symptoms: rx.symptoms || [],
+        medicines: rx.medicines || [],
+        tests: rx.tests || [],
+        advice: rx.advice || '',
+        vitals: rx.vitals || {}
+      },
+      disclaimer: 'AI-generated draft from the consultation transcript. Review and edit before signing off.'
+    });
+  })
+);
+
+// ========== PRE-VISIT AI TRIAGE SUMMARY ==========
+
+// 3-bullet brief the doctor reads before entering the room
+router.get(
+  '/triage/:appointmentId',
+  auth,
+  asyncHandler(async (req, res) => {
+    const Appointment = require('../models/Appointment');
+    const aiService = require('../services/aiService');
+
+    const appt = await Appointment.findOne({ _id: req.params.appointmentId, doctorId: req.user._id })
+      .populate('patientId', 'name age gender allergies medicalHistory bloodGroup');
+    if (!appt) return res.status(404).json({ message: 'Appointment not found' });
+
+    const patient = appt.patientId || {};
+    const summary = await aiService.triageSummary({
+      symptoms: appt.symptoms || appt.chiefComplaint,
+      patient: { age: patient.age, gender: patient.gender, allergies: patient.allergies, bloodGroup: patient.bloodGroup },
+      history: (patient.medicalHistory || []).join(', '),
+      vitals: appt.vitals || {}
+    });
+
+    res.json({
+      appointmentId: appt._id,
+      patient: { _id: patient._id, name: patient.name, age: patient.age, gender: patient.gender },
+      tokenNumber: appt.tokenNumber,
+      timeSlot: appt.timeSlot,
+      ...summary
+    });
+  })
+);
+
+// ========== DRUG INTERACTION & DOSAGE GUARD ==========
+
+// One call that runs interactions + allergy check + weight-based pediatric dosing
+router.post(
+  '/rx-guard',
+  auth,
+  asyncHandler(async (req, res) => {
+    const { patientId, medicines = [], weightKg, ageYears } = req.body;
+    if (!Array.isArray(medicines) || medicines.length === 0) {
+      return res.status(400).json({ message: 'At least one medicine is required' });
+    }
+
+    const aiService = require('../services/aiService');
+    const Patient = require('../models/Patient');
+    const { DrugInteraction } = require('../models/DrugInteraction');
+
+    const names = medicines.map((m) => (typeof m === 'string' ? m : m.name)).filter(Boolean);
+    const lower = names.map((n) => n.toLowerCase());
+
+    // Resolve patient context (allergies, age, weight)
+    let allergies = [];
+    let age = ageYears;
+    let weight = weightKg;
+    if (patientId) {
+      const patient = await Patient.findOne({ _id: patientId, doctorId: req.user._id });
+      if (patient) {
+        allergies = (patient.allergies || []).map((a) => a.toLowerCase());
+        if (age == null) age = patient.age;
+      }
+    }
+
+    // 1) Interactions — DB first, AI fallback
+    let interactions = [];
+    for (let i = 0; i < lower.length; i++) {
+      for (let j = i + 1; j < lower.length; j++) {
+        const found = await DrugInteraction.findOne({
+          $or: [
+            { drug1: lower[i], drug2: lower[j] },
+            { drug1: lower[j], drug2: lower[i] }
+          ]
+        });
+        if (found) interactions.push(found);
+      }
+    }
+    if (interactions.length === 0 && lower.length >= 2) {
+      try { interactions = await aiService.checkDrugInteractions(lower); } catch (e) { /* ignore */ }
+    }
+
+    // 2) Allergy cross-check
+    const allergyAlerts = [];
+    for (const med of names) {
+      const m = med.toLowerCase();
+      for (const a of allergies) {
+        if (m.includes(a) || a.includes(m)) {
+          allergyAlerts.push({ medicine: med, allergy: a, severity: 'high', message: `Patient allergic to "${a}" — review "${med}".` });
+        }
+      }
+    }
+
+    // 3) Pediatric weight-based dosing (when child / weight provided)
+    const isPediatric = (age != null && age <= 12) || (weight && weight <= 40);
+    const dosing = (isPediatric || weight)
+      ? names.map((n) => aiService.pediatricDosage({ drug: n, weightKg: weight, ageYears: age }))
+      : [];
+
+    res.json({
+      medicines: names,
+      patientContext: { ageYears: age ?? null, weightKg: weight ?? null, allergies, isPediatric: !!isPediatric },
+      interactions,
+      allergyAlerts,
+      dosing,
+      hasCriticalAlerts: allergyAlerts.length > 0 || interactions.some((i) => ['major', 'contraindicated'].includes((i.severity || '').toLowerCase())),
+      disclaimer: 'Automated safety check for reference only. Clinical judgment is required before prescribing.'
+    });
+  })
+);
+
 // ========== EMR TEMPLATES ==========
 
 // List templates for doctor's specialty

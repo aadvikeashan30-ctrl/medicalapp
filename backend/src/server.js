@@ -188,6 +188,7 @@ app.use('/api/chatbot', require('./routes/chatbot'));
 app.use('/api/doctor', require('./routes/doctor'));
 app.use('/api/certificates', require('./routes/certificates'));
 app.use('/api/availability', require('./routes/availability'));
+app.use('/api/waitlist', require('./routes/waitlist'));
 
 // Business Features
 app.use('/api/membership', require('./routes/membership'));
