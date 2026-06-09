@@ -36,6 +36,8 @@ import PracticeAnalytics from './pages/PracticeAnalytics';
 import AIScribe from './pages/AIScribe';
 import PrescriptionGuard from './pages/PrescriptionGuard';
 import Waitlist from './pages/Waitlist';
+import CarePathways from './pages/CarePathways';
+import WoundTracker from './pages/WoundTracker';
 import Memberships from './pages/Memberships';
 import HealthPackages from './pages/HealthPackages';
 import Campaigns from './pages/Campaigns';
@@ -51,6 +53,7 @@ import Nurse from './pages/Nurse';
 import Layout from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
+import { AccessibilityProvider } from './context/AccessibilityContext';
 import { isLoggedIn } from './utils/auth';
 
 // Patient Portal (public pages - no auth)
@@ -83,6 +86,7 @@ const routerFutureFlags = {
 export default function App() {
   return (
     <AuthProvider>
+    <AccessibilityProvider>
     <ErrorBoundary>
     <Router future={routerFutureFlags}>
       <Toaster
@@ -148,6 +152,8 @@ export default function App() {
           <Route path="ai-scribe" element={<AIScribe />} />
           <Route path="rx-guard" element={<PrescriptionGuard />} />
           <Route path="waitlist" element={<Waitlist />} />
+          <Route path="care-pathways" element={<CarePathways />} />
+          <Route path="wound-tracker" element={<WoundTracker />} />
           <Route path="memberships" element={<Memberships />} />
           <Route path="health-packages" element={<HealthPackages />} />
           <Route path="campaigns" element={<Campaigns />} />
@@ -165,6 +171,7 @@ export default function App() {
       </Routes>
     </Router>
     </ErrorBoundary>
+    </AccessibilityProvider>
     </AuthProvider>
   );
 }

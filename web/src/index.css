@@ -422,3 +422,50 @@
     display: none !important;
   }
 }
+
+
+/* ─────────────────────────────────────────────
+   ACCESSIBILITY (#12 — adaptive UI)
+───────────────────────────────────────────── */
+
+/* Larger base font scales the whole rem-based UI */
+html.a11y-large  { font-size: 17px; }
+html.a11y-xlarge { font-size: 19px; }
+
+/* High-contrast theme: stronger text, borders, and focus rings */
+html.a11y-contrast {
+  --page-bg:     #ffffff;
+  --card-bg:     #ffffff;
+  --card-border: #1a2332;
+  --text-primary:   #000000;
+  --text-secondary: #1a2332;
+  --text-muted:     #333f4d;
+}
+html.a11y-contrast .card,
+html.a11y-contrast .card-flat,
+html.a11y-contrast .stat-card,
+html.a11y-contrast .input-field,
+html.a11y-contrast .badge {
+  border-width: 2px !important;
+  border-color: #1a2332 !important;
+}
+html.a11y-contrast a:focus,
+html.a11y-contrast button:focus,
+html.a11y-contrast input:focus,
+html.a11y-contrast select:focus,
+html.a11y-contrast textarea:focus {
+  outline: 3px solid #0d8080 !important;
+  outline-offset: 2px !important;
+}
+html.a11y-contrast .text-gray-400,
+html.a11y-contrast .text-gray-500 { color: #333f4d !important; }
+
+/* Reduce motion: disable animations/transitions for sensitive users */
+html.a11y-reduce-motion *,
+html.a11y-reduce-motion *::before,
+html.a11y-reduce-motion *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.001ms !important;
+  scroll-behavior: auto !important;
+}

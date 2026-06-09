@@ -1123,5 +1123,181 @@ router.delete('/waitlist/:id', demoOnly, (req, res) => {
   res.json({ message: 'Removed from waitlist' });
 });
 
+// ==================== CARE PATHWAYS ====================
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const DEMO_PATHWAYS = [
+  {
+    _id: 'cp-1', patientId: DEMO_PATIENTS[3], patientName: 'Sunita Reddy', patientPhone: '9876543213',
+    title: 'Diabetes Management Plan', diagnosis: 'Type 2 Diabetes', status: 'active',
+    startDate: new Date(Date.now() - 5 * 86400000).toISOString(),
+    tasks: [
+      { _id: 'tk-1', label: 'Take Metformin 500mg', category: 'medication', time: '08:00 AM', frequency: 'daily', instructions: 'After breakfast' },
+      { _id: 'tk-2', label: 'Take Metformin 500mg', category: 'medication', time: '08:00 PM', frequency: 'daily', instructions: 'After dinner' },
+      { _id: 'tk-3', label: 'Log fasting blood sugar', category: 'measurement', time: 'Morning', frequency: 'daily' },
+      { _id: 'tk-4', label: '30 min brisk walk', category: 'exercise', time: 'Evening', frequency: 'daily' }
+    ],
+    completions: [{ taskId: 'tk-1', date: todayISO() }, { taskId: 'tk-3', date: todayISO() }]
+  },
+  {
+    _id: 'cp-2', patientId: DEMO_PATIENTS[0], patientName: 'Ramesh Kumar', patientPhone: '9876543210',
+    title: 'Post-Hypertension Care', diagnosis: 'Hypertension', status: 'active',
+    startDate: new Date(Date.now() - 2 * 86400000).toISOString(),
+    tasks: [
+      { _id: 'tk-5', label: 'Take Amlodipine 5mg', category: 'medication', time: '09:00 AM', frequency: 'daily' },
+      { _id: 'tk-6', label: 'Record BP reading', category: 'measurement', time: 'Morning', frequency: 'daily' },
+      { _id: 'tk-7', label: 'Low-salt diet', category: 'diet', frequency: 'daily' }
+    ],
+    completions: []
+  }
+];
+
+router.get('/care-pathways', demoOnly, (req, res) => {
+  let list = [...DEMO_PATHWAYS];
+  if (req.query.patientId) list = list.filter((p) => (p.patientId?._id || p.patientId) === req.query.patientId);
+  if (req.query.status) list = list.filter((p) => p.status === req.query.status);
+  res.json({ pathways: list, total: list.length });
+});
+
+router.get('/care-pathways/stats/summary', demoOnly, (req, res) => {
+  res.json({
+    active: DEMO_PATHWAYS.filter((p) => p.status === 'active').length,
+    completed: DEMO_PATHWAYS.filter((p) => p.status === 'completed').length,
+    total: DEMO_PATHWAYS.length
+  });
+});
+
+router.get('/care-pathways/:id', demoOnly, (req, res) => {
+  const p = DEMO_PATHWAYS.find((x) => x._id === req.params.id);
+  if (!p) return res.status(404).json({ message: 'Care pathway not found' });
+  res.json(p);
+});
+
+router.post('/care-pathways', demoOnly, (req, res) => {
+  const patient = DEMO_PATIENTS.find((p) => p._id === req.body.patientId) || DEMO_PATIENTS[0];
+  const pathway = {
+    _id: `cp-${Date.now()}`, patientId: patient, patientName: patient.name, patientPhone: patient.phone,
+    title: req.body.title, diagnosis: req.body.diagnosis || '', status: 'active',
+    startDate: req.body.startDate || new Date().toISOString(),
+    tasks: (req.body.tasks || []).map((t, i) => ({ _id: `tk-${Date.now()}-${i}`, ...t })),
+    completions: []
+  };
+  DEMO_PATHWAYS.unshift(pathway);
+  res.status(201).json(pathway);
+});
+
+router.put('/care-pathways/:id', demoOnly, (req, res) => {
+  const p = DEMO_PATHWAYS.find((x) => x._id === req.params.id);
+  if (!p) return res.status(404).json({ message: 'Care pathway not found' });
+  Object.assign(p, req.body);
+  res.json(p);
+});
+
+router.post('/care-pathways/:id/tasks', demoOnly, (req, res) => {
+  const p = DEMO_PATHWAYS.find((x) => x._id === req.params.id);
+  if (!p) return res.status(404).json({ message: 'Care pathway not found' });
+  p.tasks.push({ _id: `tk-${Date.now()}`, ...req.body });
+  res.json(p);
+});
+
+router.delete('/care-pathways/:id/tasks/:taskId', demoOnly, (req, res) => {
+  const p = DEMO_PATHWAYS.find((x) => x._id === req.params.id);
+  if (!p) return res.status(404).json({ message: 'Care pathway not found' });
+  p.tasks = p.tasks.filter((t) => t._id !== req.params.taskId);
+  p.completions = p.completions.filter((c) => c.taskId !== req.params.taskId);
+  res.json(p);
+});
+
+router.post('/care-pathways/:id/toggle', demoOnly, (req, res) => {
+  const p = DEMO_PATHWAYS.find((x) => x._id === req.params.id);
+  if (!p) return res.status(404).json({ message: 'Care pathway not found' });
+  const date = req.body.date || todayISO();
+  const idx = p.completions.findIndex((c) => c.taskId === req.body.taskId && c.date === date);
+  if (idx >= 0) p.completions.splice(idx, 1);
+  else p.completions.push({ taskId: req.body.taskId, date });
+  res.json(p);
+});
+
+router.delete('/care-pathways/:id', demoOnly, (req, res) => {
+  const idx = DEMO_PATHWAYS.findIndex((x) => x._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Care pathway not found' });
+  DEMO_PATHWAYS.splice(idx, 1);
+  res.json({ message: 'Care pathway deleted' });
+});
+
+// ==================== WOUND / SKIN PROGRESS TRACKER ====================
+const DEMO_TRACKERS = [
+  {
+    _id: 'pt-1', patientId: DEMO_PATIENTS[0], patientName: 'Ramesh Kumar',
+    bodyArea: 'Left forearm', condition: 'Post-op suture site', status: 'active',
+    entries: [
+      { _id: 'en-1', date: new Date(Date.now() - 10 * 86400000).toISOString(), photoUrl: '/uploads/demo-wound-1.jpg', note: 'Sutures intact, mild redness', assessment: 'stable' },
+      { _id: 'en-2', date: new Date(Date.now() - 4 * 86400000).toISOString(), photoUrl: '/uploads/demo-wound-2.jpg', note: 'Redness reduced, healing well', assessment: 'improving' }
+    ],
+    createdAt: new Date(Date.now() - 10 * 86400000).toISOString()
+  }
+];
+
+router.get('/progress', demoOnly, (req, res) => {
+  let list = [...DEMO_TRACKERS];
+  if (req.query.patientId) list = list.filter((t) => (t.patientId?._id || t.patientId) === req.query.patientId);
+  if (req.query.status) list = list.filter((t) => t.status === req.query.status);
+  res.json({ trackers: list, total: list.length });
+});
+
+router.get('/progress/stats/summary', demoOnly, (req, res) => {
+  res.json({
+    active: DEMO_TRACKERS.filter((t) => t.status === 'active').length,
+    healed: DEMO_TRACKERS.filter((t) => t.status === 'healed').length,
+    total: DEMO_TRACKERS.length
+  });
+});
+
+router.get('/progress/:id', demoOnly, (req, res) => {
+  const t = DEMO_TRACKERS.find((x) => x._id === req.params.id);
+  if (!t) return res.status(404).json({ message: 'Tracker not found' });
+  res.json(t);
+});
+
+router.post('/progress', demoOnly, (req, res) => {
+  const patient = DEMO_PATIENTS.find((p) => p._id === req.body.patientId) || DEMO_PATIENTS[0];
+  const tracker = {
+    _id: `pt-${Date.now()}`, patientId: patient, patientName: patient.name,
+    bodyArea: req.body.bodyArea, condition: req.body.condition || '', status: 'active',
+    entries: req.body.photoUrl ? [{ _id: `en-${Date.now()}`, date: new Date().toISOString(), photoUrl: req.body.photoUrl, note: req.body.note || '', assessment: req.body.assessment || 'stable' }] : [],
+    createdAt: new Date().toISOString()
+  };
+  DEMO_TRACKERS.unshift(tracker);
+  res.status(201).json(tracker);
+});
+
+router.post('/progress/:id/entries', demoOnly, (req, res) => {
+  const t = DEMO_TRACKERS.find((x) => x._id === req.params.id);
+  if (!t) return res.status(404).json({ message: 'Tracker not found' });
+  t.entries.push({ _id: `en-${Date.now()}`, date: req.body.date || new Date().toISOString(), photoUrl: req.body.photoUrl, note: req.body.note || '', assessment: req.body.assessment || 'stable', measurementCm: req.body.measurementCm });
+  if (req.body.assessment === 'healed') t.status = 'healed';
+  res.status(201).json(t);
+});
+
+router.delete('/progress/:id/entries/:entryId', demoOnly, (req, res) => {
+  const t = DEMO_TRACKERS.find((x) => x._id === req.params.id);
+  if (!t) return res.status(404).json({ message: 'Tracker not found' });
+  t.entries = t.entries.filter((e) => e._id !== req.params.entryId);
+  res.json(t);
+});
+
+router.put('/progress/:id', demoOnly, (req, res) => {
+  const t = DEMO_TRACKERS.find((x) => x._id === req.params.id);
+  if (!t) return res.status(404).json({ message: 'Tracker not found' });
+  Object.assign(t, req.body);
+  res.json(t);
+});
+
+router.delete('/progress/:id', demoOnly, (req, res) => {
+  const idx = DEMO_TRACKERS.findIndex((x) => x._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Tracker not found' });
+  DEMO_TRACKERS.splice(idx, 1);
+  res.json({ message: 'Tracker deleted' });
+});
+
 module.exports = router;
 module.exports.DEMO_USERS = DEMO_USERS;
