@@ -1299,5 +1299,166 @@ router.delete('/progress/:id', demoOnly, (req, res) => {
   res.json({ message: 'Tracker deleted' });
 });
 
+// ==================== REVENUE ROUTING / FULFILLMENT ====================
+const DEMO_FULFILLMENT = [
+  { _id: 'ff-1', patientId: DEMO_PATIENTS[0], patientName: 'Ramesh Kumar', source: 'prescription', type: 'pharmacy', items: [{ name: 'Amlodipine', quantity: 1, estimatedValue: 80 }, { name: 'Atorvastatin', quantity: 1, estimatedValue: 80 }], estimatedValue: 160, destination: 'internal', status: 'fulfilled', createdAt: new Date('2025-05-20') },
+  { _id: 'ff-2', patientId: DEMO_PATIENTS[3], patientName: 'Sunita Reddy', source: 'lab', type: 'lab', items: [{ name: 'HbA1c', quantity: 1, estimatedValue: 400 }], estimatedValue: 400, destination: 'internal', status: 'routed', createdAt: new Date('2025-05-28') },
+  { _id: 'ff-3', patientId: DEMO_PATIENTS[1], patientName: 'Priya Sharma', source: 'imaging', type: 'imaging', items: [{ name: 'Chest X-Ray', quantity: 1, estimatedValue: 400 }], estimatedValue: 400, destination: 'external', status: 'routed', createdAt: new Date('2025-05-26') }
+];
+
+router.get('/fulfillment', demoOnly, (req, res) => {
+  let list = [...DEMO_FULFILLMENT];
+  if (req.query.type) list = list.filter((f) => f.type === req.query.type);
+  if (req.query.status) list = list.filter((f) => f.status === req.query.status);
+  if (req.query.destination) list = list.filter((f) => f.destination === req.query.destination);
+  res.json({ records: list, total: list.length });
+});
+
+router.get('/fulfillment/stats/summary', demoOnly, (req, res) => {
+  const internal = DEMO_FULFILLMENT.filter((f) => f.destination === 'internal');
+  const external = DEMO_FULFILLMENT.filter((f) => f.destination === 'external');
+  const iVal = internal.reduce((s, f) => s + f.estimatedValue, 0);
+  const eVal = external.reduce((s, f) => s + f.estimatedValue, 0);
+  res.json({
+    retainedRevenue: iVal, retainedCount: internal.length,
+    leakedRevenue: eVal, leakedCount: external.length,
+    captureRate: iVal + eVal > 0 ? Math.round((iVal / (iVal + eVal)) * 100) : 100,
+    byType: { pharmacy: DEMO_FULFILLMENT.filter((f) => f.type === 'pharmacy').length, lab: DEMO_FULFILLMENT.filter((f) => f.type === 'lab').length, imaging: DEMO_FULFILLMENT.filter((f) => f.type === 'imaging').length },
+    pending: DEMO_FULFILLMENT.filter((f) => f.status === 'routed').length
+  });
+});
+
+router.post('/fulfillment', demoOnly, (req, res) => {
+  const rec = { _id: `ff-${Date.now()}`, destination: 'internal', status: 'routed', createdAt: new Date(), ...req.body };
+  DEMO_FULFILLMENT.unshift(rec);
+  res.status(201).json(rec);
+});
+
+router.put('/fulfillment/:id', demoOnly, (req, res) => {
+  const rec = DEMO_FULFILLMENT.find((f) => f._id === req.params.id);
+  if (!rec) return res.status(404).json({ message: 'Fulfillment record not found' });
+  Object.assign(rec, req.body);
+  res.json(rec);
+});
+
+router.delete('/fulfillment/:id', demoOnly, (req, res) => {
+  const idx = DEMO_FULFILLMENT.findIndex((f) => f._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Fulfillment record not found' });
+  DEMO_FULFILLMENT.splice(idx, 1);
+  res.json({ message: 'Fulfillment record deleted' });
+});
+
+// ==================== INSURANCE ====================
+router.get('/insurance/providers', demoOnly, (req, res) => {
+  res.json({ providers: [
+    { key: 'star health', name: 'Star Health', coverage: 80, copay: 20, network: true },
+    { key: 'hdfc ergo', name: 'HDFC Ergo', coverage: 75, copay: 25, network: true },
+    { key: 'new india', name: 'New India', coverage: 85, copay: 15, network: true },
+    { key: 'care health', name: 'Care Health', coverage: 80, copay: 20, network: true }
+  ] });
+});
+
+router.post('/insurance/verify', demoOnly, (req, res) => {
+  const table = { 'star health': 80, 'hdfc ergo': 75, 'new india': 85, 'care health': 80 };
+  const cov = table[String(req.body.provider || '').toLowerCase()] || 70;
+  const valid = String(req.body.policyNo || '').replace(/\D/g, '').length >= 6;
+  res.json({
+    provider: req.body.provider, policyNo: req.body.policyNo,
+    verified: valid, status: valid ? 'verified' : 'rejected', inNetwork: true,
+    coveragePercent: valid ? cov : 0, copayPercent: valid ? 100 - cov : 100, knownProvider: !!table[String(req.body.provider || '').toLowerCase()],
+    message: valid ? `Policy verified — ${cov}% covered (in-network).` : 'Policy number appears invalid.',
+    verifiedAt: new Date().toISOString()
+  });
+});
+
+router.post('/insurance/estimate', demoOnly, (req, res) => {
+  const total = Number(req.body.amount || 0);
+  const pct = req.body.coveragePercent != null ? Number(req.body.coveragePercent) : 75;
+  const insuranceCovered = Math.round((total * pct) / 100);
+  const patientPayable = Math.max(0, total - insuranceCovered);
+  res.json({ totalAmount: total, coveragePercent: pct, insuranceCovered, patientCopay: patientPayable, patientPayable, breakdown: [{ label: 'Insurance covers', percent: pct, amount: insuranceCovered }, { label: 'Patient copay', percent: 100 - pct, amount: patientPayable }] });
+});
+
+// ==================== RPM ====================
+const monthKey = new Date().toISOString().slice(0, 7);
+const DEMO_RPM = [
+  {
+    _id: 'rpm-1', patientId: DEMO_PATIENTS[0], patientName: 'Ramesh Kumar', deviceType: 'bp-cuff', condition: 'Hypertension', status: 'active', setupBilled: true,
+    enrolledDate: new Date(Date.now() - 40 * 86400000).toISOString(),
+    logs: [{ _id: 'l1', date: `${monthKey}-05`, minutes: 12, readings: 18 }, { _id: 'l2', date: `${monthKey}-12`, minutes: 15, readings: 16 }],
+    billing: { month: monthKey, minutes: 27, daysTransmitted: 18, codes: [{ code: '99454', label: 'Device supply + daily readings (16+ days)', rate: 4800, units: 1 }, { code: '99457', label: 'First 20 min monitoring / month', rate: 4000, units: 1 }], estimatedReimbursement: 8800 }
+  },
+  {
+    _id: 'rpm-2', patientId: DEMO_PATIENTS[3], patientName: 'Sunita Reddy', deviceType: 'cgm', condition: 'Type 2 Diabetes', status: 'active', setupBilled: false,
+    enrolledDate: new Date(Date.now() - 5 * 86400000).toISOString(),
+    logs: [{ _id: 'l3', date: `${monthKey}-10`, minutes: 8, readings: 6 }],
+    billing: { month: monthKey, minutes: 8, daysTransmitted: 6, codes: [{ code: '99453', label: 'Initial device setup & education', rate: 1500, units: 1 }], estimatedReimbursement: 1500 }
+  }
+];
+
+router.get('/rpm', demoOnly, (req, res) => {
+  let list = [...DEMO_RPM];
+  if (req.query.status) list = list.filter((r) => r.status === req.query.status);
+  res.json({ records: list, total: list.length });
+});
+
+router.get('/rpm/stats/summary', demoOnly, (req, res) => {
+  res.json({ enrolled: DEMO_RPM.length, active: DEMO_RPM.filter((r) => r.status === 'active').length, totalMinutes: 35, estimatedReimbursement: 10300, readyToBill: 2 });
+});
+
+router.get('/rpm/:id', demoOnly, (req, res) => {
+  const r = DEMO_RPM.find((x) => x._id === req.params.id);
+  if (!r) return res.status(404).json({ message: 'RPM record not found' });
+  res.json(r);
+});
+
+router.post('/rpm', demoOnly, (req, res) => {
+  const patient = DEMO_PATIENTS.find((p) => p._id === req.body.patientId) || DEMO_PATIENTS[0];
+  const rec = { _id: `rpm-${Date.now()}`, patientId: patient, patientName: patient.name, deviceType: req.body.deviceType || 'bp-cuff', condition: req.body.condition || '', status: 'active', setupBilled: false, enrolledDate: new Date().toISOString(), logs: [], billing: { month: monthKey, minutes: 0, daysTransmitted: 0, codes: [{ code: '99453', label: 'Initial device setup & education', rate: 1500, units: 1 }], estimatedReimbursement: 1500 } };
+  DEMO_RPM.unshift(rec);
+  res.status(201).json(rec);
+});
+
+router.post('/rpm/:id/log', demoOnly, (req, res) => {
+  const r = DEMO_RPM.find((x) => x._id === req.params.id);
+  if (!r) return res.status(404).json({ message: 'RPM record not found' });
+  r.logs.push({ _id: `l-${Date.now()}`, date: req.body.date || new Date().toISOString(), minutes: Number(req.body.minutes || 0), readings: Number(req.body.readings || 0), note: req.body.note });
+  const mins = r.logs.reduce((s, l) => s + (l.minutes || 0), 0);
+  const days = r.logs.reduce((s, l) => s + ((l.readings || 0) > 0 ? 1 : 0), 0);
+  const codes = [];
+  if (!r.setupBilled) codes.push({ code: '99453', label: 'Initial device setup & education', rate: 1500, units: 1 });
+  if (days >= 16) codes.push({ code: '99454', label: 'Device supply + daily readings (16+ days)', rate: 4800, units: 1 });
+  if (mins >= 20) codes.push({ code: '99457', label: 'First 20 min monitoring / month', rate: 4000, units: 1 });
+  if (mins >= 40) codes.push({ code: '99458', label: 'Each additional 20 min / month', rate: 3200, units: Math.floor((mins - 20) / 20) });
+  r.billing = { month: monthKey, minutes: mins, daysTransmitted: days, codes, estimatedReimbursement: codes.reduce((s, c) => s + c.rate * c.units, 0) };
+  res.status(201).json(r);
+});
+
+router.post('/rpm/:id/bill-setup', demoOnly, (req, res) => {
+  const r = DEMO_RPM.find((x) => x._id === req.params.id);
+  if (!r) return res.status(404).json({ message: 'RPM record not found' });
+  r.setupBilled = true;
+  res.json(r);
+});
+
+router.put('/rpm/:id', demoOnly, (req, res) => {
+  const r = DEMO_RPM.find((x) => x._id === req.params.id);
+  if (!r) return res.status(404).json({ message: 'RPM record not found' });
+  Object.assign(r, req.body);
+  res.json(r);
+});
+
+router.delete('/rpm/:id', demoOnly, (req, res) => {
+  const idx = DEMO_RPM.findIndex((x) => x._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'RPM record not found' });
+  DEMO_RPM.splice(idx, 1);
+  res.json({ message: 'RPM enrollment removed' });
+});
+
+// Per-seat licensing summary
+router.get('/subscription/seats', demoOnly, (req, res) => {
+  res.json({ plan: 'pro', seatsUsed: 3, seatLimit: 5, seatsAvailable: 2, pricePerSeat: 249, monthlyCommitment: 747, trial: { active: false, daysRemaining: 320, lengthDays: 60 } });
+});
+
 module.exports = router;
 module.exports.DEMO_USERS = DEMO_USERS;

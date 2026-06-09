@@ -57,6 +57,18 @@ router.post(
     if (paidAmount >= totalAmount && totalAmount > 0) paymentStatus = 'paid';
     else if (paidAmount > 0) paymentStatus = 'partial';
 
+    // Split-billing: compute insurance vs patient portions
+    let insuranceCovered = 0;
+    const ins = req.body.insurance;
+    if (ins && (ins.approvedAmount || ins.coveragePercent)) {
+      insuranceCovered = ins.approvedAmount != null
+        ? Math.min(Number(ins.approvedAmount), totalAmount)
+        : Math.round((totalAmount * Number(ins.coveragePercent || 0)) / 100);
+    } else if (req.body.insuranceCovered) {
+      insuranceCovered = Math.min(Number(req.body.insuranceCovered), totalAmount);
+    }
+    const patientPayable = Math.max(0, totalAmount - insuranceCovered);
+
     const bill = await Billing.create({
       ...req.body,
       doctorId: req.user._id,
@@ -65,7 +77,9 @@ router.post(
       tax,
       totalAmount,
       paidAmount,
-      paymentStatus
+      paymentStatus,
+      insuranceCovered,
+      patientPayable
     });
 
     if (paidAmount > 0) {

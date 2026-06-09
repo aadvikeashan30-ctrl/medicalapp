@@ -58,6 +58,13 @@ router.post(
       appointmentId: appointmentId || undefined
     });
     const populated = await test.populate('patientId', 'name phone');
+
+    // Revenue routing: send the order to the in-house lab/imaging (leakage prevention)
+    try {
+      const { routeLab } = require('../services/fulfillmentService');
+      await routeLab(req.user, test, populated.patientId?.name);
+    } catch (e) { /* non-critical */ }
+
     res.status(201).json(populated);
   })
 );

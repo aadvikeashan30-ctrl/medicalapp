@@ -270,4 +270,40 @@ router.get(
   })
 );
 
+// Per-seat enterprise licensing summary (B2B SaaS)
+router.get(
+  '/seats',
+  auth,
+  asyncHandler(async (req, res) => {
+    const Branch = require('../models/Branch');
+    const plan = req.user.plan || 'free';
+    const SEAT_ALLOWANCE = { free: 1, basic: 2, pro: 5, enterprise: 25 };
+    const SEAT_PRICE = { free: 0, basic: 299, pro: 249, enterprise: 199 }; // per-seat / month
+
+    const branches = await Branch.find({ ownerId: req.user._id });
+    const teamIds = new Set(
+      branches.flatMap((b) => [...(b.doctors || []), ...(b.staff || [])].map(String))
+    );
+    const seatsUsed = teamIds.size + 1; // include the account owner
+    const seatLimit = SEAT_ALLOWANCE[plan] ?? 1;
+
+    const isTrial = req.user.planExpiry
+      ? new Date(req.user.planExpiry) > new Date() && plan !== 'free'
+      : false;
+    const trialDaysRemaining = req.user.planExpiry
+      ? Math.max(0, Math.ceil((new Date(req.user.planExpiry) - new Date()) / (1000 * 60 * 60 * 24)))
+      : null;
+
+    res.json({
+      plan,
+      seatsUsed,
+      seatLimit,
+      seatsAvailable: Math.max(0, seatLimit - seatsUsed),
+      pricePerSeat: SEAT_PRICE[plan] ?? 0,
+      monthlyCommitment: (SEAT_PRICE[plan] ?? 0) * seatsUsed,
+      trial: { active: isTrial, daysRemaining: trialDaysRemaining, lengthDays: 60 }
+    });
+  })
+);
+
 module.exports = router;

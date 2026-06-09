@@ -32,6 +32,17 @@ const billingSchema = new mongoose.Schema(
       enum: ['paid', 'partial', 'pending', 'refunded'],
       default: 'pending'
     },
+    // Insurance pre-verification & split-billing
+    insurance: {
+      provider: { type: String },
+      policyNo: { type: String },
+      verified: { type: Boolean, default: false },
+      coveragePercent: { type: Number, default: 0 },
+      approvedAmount: { type: Number },
+      status: { type: String, enum: ['none', 'pending', 'verified', 'approved', 'rejected'], default: 'none' }
+    },
+    insuranceCovered: { type: Number, default: 0 },
+    patientPayable: { type: Number, default: 0 },
     notes: { type: String }
   },
   { timestamps: true }

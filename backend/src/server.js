@@ -191,6 +191,9 @@ app.use('/api/availability', require('./routes/availability'));
 app.use('/api/waitlist', require('./routes/waitlist'));
 app.use('/api/care-pathways', require('./routes/carePathways'));
 app.use('/api/progress', require('./routes/progress'));
+app.use('/api/fulfillment', require('./routes/fulfillment'));
+app.use('/api/insurance', require('./routes/insurance'));
+app.use('/api/rpm', require('./routes/rpm'));
 
 // Business Features
 app.use('/api/membership', require('./routes/membership'));

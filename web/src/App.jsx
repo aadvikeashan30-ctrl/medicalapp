@@ -38,6 +38,9 @@ import PrescriptionGuard from './pages/PrescriptionGuard';
 import Waitlist from './pages/Waitlist';
 import CarePathways from './pages/CarePathways';
 import WoundTracker from './pages/WoundTracker';
+import RevenueRouting from './pages/RevenueRouting';
+import InsuranceDesk from './pages/InsuranceDesk';
+import RPMTracker from './pages/RPMTracker';
 import Memberships from './pages/Memberships';
 import HealthPackages from './pages/HealthPackages';
 import Campaigns from './pages/Campaigns';
@@ -154,6 +157,9 @@ export default function App() {
           <Route path="waitlist" element={<Waitlist />} />
           <Route path="care-pathways" element={<CarePathways />} />
           <Route path="wound-tracker" element={<WoundTracker />} />
+          <Route path="revenue-routing" element={<RevenueRouting />} />
+          <Route path="insurance" element={<InsuranceDesk />} />
+          <Route path="rpm" element={<RPMTracker />} />
           <Route path="memberships" element={<Memberships />} />
           <Route path="health-packages" element={<HealthPackages />} />
           <Route path="campaigns" element={<Campaigns />} />
