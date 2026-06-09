@@ -209,6 +209,30 @@ export const DEMO_RESPONSES = {
     total: 1
   },
   '/progress/stats/summary': { active: 1, healed: 0, total: 1 },
+  '/fulfillment': {
+    records: [
+      { _id: 'ff-1', patientName: 'Ramesh Kumar', source: 'prescription', type: 'pharmacy', items: [{ name: 'Amlodipine', quantity: 1, estimatedValue: 80 }, { name: 'Atorvastatin', quantity: 1, estimatedValue: 80 }], estimatedValue: 160, destination: 'internal', status: 'fulfilled', createdAt: '2025-05-20' },
+      { _id: 'ff-2', patientName: 'Sunita Reddy', source: 'lab', type: 'lab', items: [{ name: 'HbA1c', quantity: 1, estimatedValue: 400 }], estimatedValue: 400, destination: 'internal', status: 'routed', createdAt: '2025-05-28' },
+      { _id: 'ff-3', patientName: 'Priya Sharma', source: 'imaging', type: 'imaging', items: [{ name: 'Chest X-Ray', quantity: 1, estimatedValue: 400 }], estimatedValue: 400, destination: 'external', status: 'routed', createdAt: '2025-05-26' }
+    ],
+    total: 3
+  },
+  '/fulfillment/stats/summary': { retainedRevenue: 560, retainedCount: 2, leakedRevenue: 400, leakedCount: 1, captureRate: 58, byType: { pharmacy: 1, lab: 1, imaging: 1 }, pending: 2 },
+  '/insurance/providers': { providers: [
+    { key: 'star health', name: 'Star Health', coverage: 80, copay: 20, network: true },
+    { key: 'hdfc ergo', name: 'HDFC Ergo', coverage: 75, copay: 25, network: true },
+    { key: 'new india', name: 'New India', coverage: 85, copay: 15, network: true },
+    { key: 'care health', name: 'Care Health', coverage: 80, copay: 20, network: true }
+  ] },
+  '/rpm': {
+    records: [
+      { _id: 'rpm-1', patientName: 'Ramesh Kumar', patientId: { name: 'Ramesh Kumar', patientId: 'PAT-0001' }, deviceType: 'bp-cuff', condition: 'Hypertension', status: 'active', setupBilled: true, enrolledDate: new Date(Date.now() - 40 * 86400000).toISOString(), logs: [], billing: { month: new Date().toISOString().slice(0, 7), minutes: 27, daysTransmitted: 18, codes: [{ code: '99454', label: 'Device supply + daily readings (16+ days)', rate: 4800, units: 1 }, { code: '99457', label: 'First 20 min monitoring / month', rate: 4000, units: 1 }], estimatedReimbursement: 8800 } },
+      { _id: 'rpm-2', patientName: 'Sunita Reddy', patientId: { name: 'Sunita Reddy', patientId: 'PAT-0004' }, deviceType: 'cgm', condition: 'Type 2 Diabetes', status: 'active', setupBilled: false, enrolledDate: new Date(Date.now() - 5 * 86400000).toISOString(), logs: [], billing: { month: new Date().toISOString().slice(0, 7), minutes: 8, daysTransmitted: 6, codes: [{ code: '99453', label: 'Initial device setup & education', rate: 1500, units: 1 }], estimatedReimbursement: 1500 } }
+    ],
+    total: 2
+  },
+  '/rpm/stats/summary': { enrolled: 2, active: 2, totalMinutes: 35, estimatedReimbursement: 10300, readyToBill: 2 },
+  '/subscription/seats': { plan: 'pro', seatsUsed: 3, seatLimit: 5, seatsAvailable: 2, pricePerSeat: 249, monthlyCommitment: 747, trial: { active: false, daysRemaining: 320, lengthDays: 60 } },
   '/doctor/scribe': {
     soap: {
       subjective: 'Patient reports cough and mild fever for 3 days, no breathing difficulty.',
@@ -345,6 +369,16 @@ export function getDemoResponse(url) {
   if (cleanPath.includes('progress')) {
     if (cleanPath.includes('stats')) return DEMO_RESPONSES['/progress/stats/summary'];
     return DEMO_RESPONSES['/progress'];
+  }
+  if (cleanPath.includes('fulfillment')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/fulfillment/stats/summary'];
+    return DEMO_RESPONSES['/fulfillment'];
+  }
+  if (cleanPath.includes('insurance/provider')) return DEMO_RESPONSES['/insurance/providers'];
+  if (cleanPath.includes('subscription/seats')) return DEMO_RESPONSES['/subscription/seats'];
+  if (cleanPath.includes('rpm')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/rpm/stats/summary'];
+    return DEMO_RESPONSES['/rpm'];
   }
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];

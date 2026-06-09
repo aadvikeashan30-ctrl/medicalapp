@@ -8,7 +8,7 @@ import {
   FiShield, FiMessageCircle, FiCpu, FiMic,
   FiEdit3, FiAward, FiGift, FiSend, FiStar,
   FiTrendingUp, FiMapPin, FiDatabase, FiGlobe,
-  FiChevronDown, FiList, FiCamera
+  FiChevronDown, FiList, FiCamera, FiWifi
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
 import NotificationCenter from './NotificationCenter';
@@ -64,6 +64,9 @@ const moreNavGroups = [
       { path: '/expenses',         icon: FiCreditCard,    label: 'Expenses' },
       { path: '/reports',          icon: FiBarChart2,     label: 'Reports' },
       { path: '/practice-analytics',icon: FiTrendingUp,   label: 'Practice Analytics' },
+      { path: '/revenue-routing',  icon: FiTrendingUp,    label: 'Revenue Routing' },
+      { path: '/insurance',        icon: FiShield,        label: 'Insurance Desk' },
+      { path: '/rpm',              icon: FiWifi,          label: 'RPM Reimbursement' },
       { path: '/memberships',      icon: FiAward,         label: 'Memberships' },
       { path: '/health-packages',  icon: FiPackage,       label: 'Health Packages' },
       { path: '/referrals',        icon: FiGift,          label: 'Referral Program' },

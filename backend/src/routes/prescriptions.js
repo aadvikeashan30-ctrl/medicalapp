@@ -41,7 +41,19 @@ router.post(
   asyncHandler(async (req, res) => {
     if (!req.body.patientId) return res.status(400).json({ message: 'patientId is required' });
     const prescription = await Prescription.create({ ...req.body, doctorId: req.user._id });
-    res.status(201).json(prescription);
+
+    // Revenue routing: send medicines to the in-house pharmacy (leakage prevention)
+    let fulfillment = null;
+    if ((prescription.medicines || []).length > 0) {
+      try {
+        const { routePrescription } = require('../services/fulfillmentService');
+        const Patient = require('../models/Patient');
+        const patient = await Patient.findById(prescription.patientId).select('name');
+        fulfillment = await routePrescription(req.user, prescription, patient?.name);
+      } catch (e) { /* non-critical */ }
+    }
+
+    res.status(201).json(fulfillment ? { ...prescription.toObject(), fulfillmentId: fulfillment._id } : prescription);
   })
 );
 
