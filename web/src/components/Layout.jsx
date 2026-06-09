@@ -8,7 +8,8 @@ import {
   FiShield, FiMessageCircle, FiCpu, FiMic,
   FiEdit3, FiAward, FiGift, FiSend, FiStar,
   FiTrendingUp, FiMapPin, FiDatabase, FiGlobe,
-  FiChevronDown, FiList, FiCamera, FiWifi
+  FiChevronDown, FiList, FiCamera, FiWifi,
+  FiInbox, FiVideo, FiZap, FiWatch, FiShare2
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
 import NotificationCenter from './NotificationCenter';
@@ -35,6 +36,9 @@ const moreNavGroups = [
     items: [
       { path: '/visit-pad',        icon: FiActivity,      label: 'Visit Pad' },
       { path: '/opd-queue',        icon: FiStar,          label: 'OPD Queue' },
+      { path: '/teleconsult',      icon: FiVideo,         label: 'Teleconsult Hub' },
+      { path: '/async-consults',   icon: FiInbox,         label: 'Async Consultations' },
+      { path: '/smart-scheduler',  icon: FiZap,           label: 'Smart Day Planner' },
       { path: '/waitlist',         icon: FiClock,         label: 'Waitlist Auto-Fill' },
       { path: '/patient-insights', icon: FiTrendingUp,    label: 'Patient Insights' },
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
@@ -80,6 +84,8 @@ const moreNavGroups = [
       { path: '/patient-portal',  icon: FiGlobe,         label: 'Patient Portal' },
       { path: '/family-accounts', icon: FiUserPlus,      label: 'Family Accounts' },
       { path: '/medicine-reminders',icon: FiClock,       label: 'Medicine Reminders' },
+      { path: '/wearables',       icon: FiWatch,         label: 'Wearable Monitoring' },
+      { path: '/interoperability',icon: FiShare2,        label: 'FHIR Interoperability' },
       { path: '/branches',        icon: FiMapPin,        label: 'Branches & Team' },
       { path: '/audit-logs',      icon: FiDatabase,      label: 'Audit & Backup' },
     ]

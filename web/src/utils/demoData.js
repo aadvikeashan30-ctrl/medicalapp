@@ -233,6 +233,30 @@ export const DEMO_RESPONSES = {
   },
   '/rpm/stats/summary': { enrolled: 2, active: 2, totalMinutes: 35, estimatedReimbursement: 10300, readyToBill: 2 },
   '/subscription/seats': { plan: 'pro', seatsUsed: 3, seatLimit: 5, seatsAvailable: 2, pricePerSeat: 249, monthlyCommitment: 747, trial: { active: false, daysRemaining: 320, lengthDays: 60 } },
+  '/async-consults': {
+    consults: [
+      { _id: 'ac-1', patientName: 'Amit Patel', patientPhone: '9876543212', category: 'dermatology', description: 'Itchy red rash on forearm for 4 days, spreading slowly.', photos: [], priority: 'normal', status: 'pending', createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
+      { _id: 'ac-2', patientName: 'Ramesh Kumar', patientPhone: '9876543210', category: 'wound-check', description: 'Post-op wound looks slightly red around edges. Normal?', photos: [], priority: 'high', status: 'in-review', createdAt: new Date(Date.now() - 6 * 3600000).toISOString() },
+      { _id: 'ac-3', patientName: 'Priya Sharma', patientPhone: '9876543211', category: 'medication-query', description: 'Can I take my BP medicine with the new antibiotic?', photos: [], priority: 'normal', status: 'responded', response: { text: 'Yes, safe together. Space 2 hours apart.', respondedAt: new Date(Date.now() - 86400000).toISOString() }, createdAt: new Date(Date.now() - 90000000).toISOString() }
+    ],
+    total: 3
+  },
+  '/async-consults/stats/summary': { pending: 1, inReview: 1, responded: 1, high: 1, openTotal: 2 },
+  '/wearables': {
+    devices: [
+      { _id: 'wd-1', patientName: 'Sunita Reddy', patientId: { name: 'Sunita Reddy', patientId: 'PAT-0004' }, deviceType: 'cgm', metric: 'glucose', unit: 'mg/dL', thresholds: { min: 70, max: 180 }, status: 'connected', alertActive: true, lastSyncedAt: new Date(Date.now() - 1800000).toISOString(), readings: [{ _id: 'r1', value: 165, takenAt: new Date(Date.now() - 5 * 3600000).toISOString(), flagged: false }, { _id: 'r2', value: 192, takenAt: new Date(Date.now() - 3600000).toISOString(), flagged: true }] },
+      { _id: 'wd-2', patientName: 'Ramesh Kumar', patientId: { name: 'Ramesh Kumar', patientId: 'PAT-0001' }, deviceType: 'bp-cuff', metric: 'blood-pressure', unit: 'mmHg', thresholds: { min: 90, max: 140, minSecondary: 60, maxSecondary: 90 }, status: 'connected', alertActive: false, lastSyncedAt: new Date(Date.now() - 7200000).toISOString(), readings: [{ _id: 'r3', value: 128, secondaryValue: 82, takenAt: new Date(Date.now() - 7200000).toISOString(), flagged: false }] }
+    ],
+    total: 2
+  },
+  '/wearables/stats/summary': { connected: 2, alerts: 1, total: 2 },
+  '/fhir/metadata': { resourceType: 'CapabilityStatement', status: 'active', fhirVersion: '4.0.1', format: ['json'], publisher: 'DocClinic Pro', externalServer: null, rest: [{ mode: 'server', resource: [{ type: 'Patient' }, { type: 'Appointment' }, { type: 'MedicationRequest' }] }] },
+  '/doctor/slot-plan': {
+    total: 5,
+    morningBlock: { label: 'Short / virtual follow-ups (AM)', count: 2, items: [{ patient: 'Priya Sharma', type: 'follow-up', mode: 'video', duration: 15, suggestedSlot: '09:00' }, { patient: 'Ramesh Kumar', type: 'follow-up', mode: 'phone', duration: 10, suggestedSlot: '09:15' }] },
+    afternoonBlock: { label: 'Complex / in-person evaluations (PM)', count: 2, items: [{ patient: 'Amit Patel', type: 'consultation', mode: 'in-person', duration: 30, suggestedSlot: '14:00' }, { patient: 'Sunita Reddy', type: 'consultation', mode: 'in-person', duration: 30, suggestedSlot: '14:30' }] },
+    rationale: ['Batch quick virtual follow-ups early.', 'Reserve afternoons for in-person evaluations.', 'Group similar modes to cut context-switching.']
+  },
   '/doctor/scribe': {
     soap: {
       subjective: 'Patient reports cough and mild fever for 3 days, no breathing difficulty.',
@@ -380,6 +404,16 @@ export function getDemoResponse(url) {
     if (cleanPath.includes('stats')) return DEMO_RESPONSES['/rpm/stats/summary'];
     return DEMO_RESPONSES['/rpm'];
   }
+  if (cleanPath.includes('async-consult')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/async-consults/stats/summary'];
+    return DEMO_RESPONSES['/async-consults'];
+  }
+  if (cleanPath.includes('wearable')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/wearables/stats/summary'];
+    return DEMO_RESPONSES['/wearables'];
+  }
+  if (cleanPath.includes('slot-plan')) return DEMO_RESPONSES['/doctor/slot-plan'];
+  if (cleanPath.includes('fhir')) return DEMO_RESPONSES['/fhir/metadata'];
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];
   if (cleanPath.includes('appointment')) return DEMO_RESPONSES['/appointments'];

@@ -194,6 +194,9 @@ app.use('/api/progress', require('./routes/progress'));
 app.use('/api/fulfillment', require('./routes/fulfillment'));
 app.use('/api/insurance', require('./routes/insurance'));
 app.use('/api/rpm', require('./routes/rpm'));
+app.use('/api/async-consults', require('./routes/asyncConsults'));
+app.use('/api/wearables', require('./routes/wearables'));
+app.use('/api/fhir', require('./routes/fhir'));
 
 // Business Features
 app.use('/api/membership', require('./routes/membership'));

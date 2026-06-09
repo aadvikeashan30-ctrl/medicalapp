@@ -41,6 +41,11 @@ import WoundTracker from './pages/WoundTracker';
 import RevenueRouting from './pages/RevenueRouting';
 import InsuranceDesk from './pages/InsuranceDesk';
 import RPMTracker from './pages/RPMTracker';
+import AsyncConsultations from './pages/AsyncConsultations';
+import WearableMonitoring from './pages/WearableMonitoring';
+import Interoperability from './pages/Interoperability';
+import SmartScheduler from './pages/SmartScheduler';
+import TeleconsultHub from './pages/TeleconsultHub';
 import Memberships from './pages/Memberships';
 import HealthPackages from './pages/HealthPackages';
 import Campaigns from './pages/Campaigns';
@@ -160,6 +165,11 @@ export default function App() {
           <Route path="revenue-routing" element={<RevenueRouting />} />
           <Route path="insurance" element={<InsuranceDesk />} />
           <Route path="rpm" element={<RPMTracker />} />
+          <Route path="async-consults" element={<AsyncConsultations />} />
+          <Route path="wearables" element={<WearableMonitoring />} />
+          <Route path="interoperability" element={<Interoperability />} />
+          <Route path="smart-scheduler" element={<SmartScheduler />} />
+          <Route path="teleconsult" element={<TeleconsultHub />} />
           <Route path="memberships" element={<Memberships />} />
           <Route path="health-packages" element={<HealthPackages />} />
           <Route path="campaigns" element={<Campaigns />} />

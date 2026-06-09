@@ -223,6 +223,53 @@ router.get(
   })
 );
 
+// Video -> VoIP failover: switch a dropped video call to an encrypted phone call
+router.post(
+  '/failover/:appointmentId',
+  auth,
+  asyncHandler(async (req, res) => {
+    const appointment = await Appointment.findOne({
+      _id: req.params.appointmentId,
+      doctorId: req.user._id
+    }).populate('patientId', 'name phone');
+
+    if (!appointment) {
+      return res.status(404).json({ message: 'Appointment not found' });
+    }
+
+    const { initiateCall, isConfigured } = require('../services/voipService');
+    const call = await initiateCall({
+      doctorPhone: req.user.phone,
+      patientPhone: appointment.patientId?.phone,
+      reason: req.body.reason || 'video-drop'
+    });
+
+    appointment.consultationMode = 'phone';
+    if (appointment.status === 'scheduled' || appointment.status === 'confirmed') {
+      appointment.status = 'in-progress';
+    }
+    await appointment.save();
+
+    // Notify patient that we're calling them
+    try {
+      const { sendMessage } = require('../services/whatsappService');
+      if (appointment.patientId?.phone) {
+        await sendMessage({
+          to: appointment.patientId.phone,
+          body: `Your video connection dropped — Dr. ${req.user.name} is calling you now to continue the consultation.`
+        });
+      }
+    } catch (e) { /* non-critical */ }
+
+    res.json({
+      message: call.configured ? 'Failover call initiated' : 'Failover call simulated (no telephony provider configured)',
+      mode: 'phone',
+      call,
+      voipConfigured: isConfigured()
+    });
+  })
+);
+
 // Get today's video appointments (doctor dashboard)
 router.get(
   '/today',
