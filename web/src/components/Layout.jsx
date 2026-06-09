@@ -213,7 +213,7 @@ export default function Layout() {
                   {moreOpen && (
                     <>
                       <div className="fixed inset-0 z-40" onClick={() => setMoreOpen(false)} />
-                      <div className="absolute left-0 top-full mt-1 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 w-[680px] grid grid-cols-2 gap-6 animate-scale-in">
+                      <div className="fixed top-14 right-3 lg:right-6 z-50 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 w-[680px] max-w-[94vw] grid grid-cols-2 gap-x-6 gap-y-4 max-h-[78vh] overflow-y-auto custom-scroll animate-scale-in">
                         {filteredMoreNavGroups.map(group => (
                           <div key={group.label}>
                             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-2">{group.label}</p>
