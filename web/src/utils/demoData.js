@@ -168,6 +168,47 @@ export const DEMO_RESPONSES = {
     predictedNoShowProbability: 15, suggestedFollowUp: '2 weeks',
     disclaimer: 'AI risk assessment is for reference only.'
   },
+  '/waitlist': {
+    entries: [
+      { _id: 'wl-1', patientName: 'Kavita Nair', patientPhone: '9876500011', service: 'MRI', priority: 'high', status: 'waiting', note: 'Knee MRI — flexible timing', createdAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+      { _id: 'wl-2', patientName: 'Rahul Verma', patientPhone: '9876500022', service: 'consultation', priority: 'normal', status: 'waiting', note: 'Prefers mornings', createdAt: new Date(Date.now() - 86400000).toISOString() },
+      { _id: 'wl-3', patientName: 'Meena Iyer', patientPhone: '9876500033', service: 'CT scan', priority: 'high', status: 'notified', notifyCount: 1, createdAt: new Date(Date.now() - 3 * 86400000).toISOString() }
+    ],
+    total: 3
+  },
+  '/waitlist/stats/summary': { waiting: 2, notified: 1, booked: 0, high: 2 },
+  '/doctor/scribe': {
+    soap: {
+      subjective: 'Patient reports cough and mild fever for 3 days, no breathing difficulty.',
+      objective: 'Temp 100.8F, throat mildly congested, chest clear, SpO2 98%.',
+      assessment: 'Acute viral upper respiratory infection.',
+      plan: 'Symptomatic treatment, hydration, review in 5 days if not improving.'
+    },
+    icd10Suggestions: [{ code: 'J06.9', description: 'Acute upper respiratory infection, unspecified' }],
+    keyFindings: ['No red flags', 'Vitals stable'],
+    followUpSuggested: '5 days',
+    draftPrescription: {
+      diagnosis: 'Acute viral URI', symptoms: ['cough', 'fever'],
+      medicines: [
+        { name: 'Paracetamol', dosage: '500mg', frequency: '1-0-1', duration: '3 days', timing: 'after-food', notes: 'For fever' },
+        { name: 'Cetirizine', dosage: '10mg', frequency: '0-0-1', duration: '5 days', timing: 'bedtime', notes: 'For congestion' }
+      ],
+      tests: [], advice: 'Rest, warm fluids, steam inhalation.', vitals: { temperature: 100.8, spo2: 98 }
+    },
+    disclaimer: 'AI-generated draft. Review and edit before signing off.'
+  },
+  '/doctor/rx-guard': {
+    medicines: ['Paracetamol', 'Amoxicillin'],
+    patientContext: { ageYears: 6, weightKg: 20, allergies: [], isPediatric: true },
+    interactions: [{ drug1: 'Paracetamol', drug2: 'Amoxicillin', severity: 'minor', description: 'No significant interaction expected.' }],
+    allergyAlerts: [],
+    dosing: [
+      { found: true, drug: 'paracetamol', weightKg: 20, perDoseMg: 300, dosesPerDay: 4, frequency: '4 times/day', route: 'oral', note: 'Antipyretic/analgesic.' },
+      { found: true, drug: 'amoxicillin', weightKg: 20, perDoseMg: 400, dosesPerDay: 2, frequency: '2 times/day', route: 'oral', note: 'Divided q12h.' }
+    ],
+    hasCriticalAlerts: false,
+    disclaimer: 'Automated safety check for reference only.'
+  },
   '/whatsapp/run-reminders': { processed: 5, sent: 3, failed: 0 },
   '/whatsapp/send': { message: 'Message sent (demo mode)', sent: true },
   '/whatsapp/prescription': { message: 'Prescription shared (demo mode)', sent: true },
@@ -259,6 +300,12 @@ export function getDemoResponse(url) {
   if (cleanPath.includes('availability')) return DEMO_RESPONSES['/availability'];
   if (cleanPath.includes('doctor/optimize-schedule')) return DEMO_RESPONSES['/doctor/optimize-schedule'];
   if (cleanPath.includes('doctor/patient-risk')) return DEMO_RESPONSES['/doctor/patient-risk'];
+  if (cleanPath.includes('doctor/scribe')) return DEMO_RESPONSES['/doctor/scribe'];
+  if (cleanPath.includes('doctor/rx-guard')) return DEMO_RESPONSES['/doctor/rx-guard'];
+  if (cleanPath.includes('waitlist')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/waitlist/stats/summary'];
+    return DEMO_RESPONSES['/waitlist'];
+  }
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];
   if (cleanPath.includes('appointment')) return DEMO_RESPONSES['/appointments'];

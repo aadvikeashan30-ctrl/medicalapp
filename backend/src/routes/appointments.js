@@ -250,9 +250,48 @@ router.put(
       emitQueueUpdate(appointment.doctorId.toString());
     } catch (e) { /* non-critical */ }
 
-    res.json(appointment);
+    // No-show prevention: if cancelled, offer the freed slot to the waitlist
+    let waitlistNotified = 0;
+    if (req.body.status === 'cancelled' || req.body.status === 'no-show') {
+      waitlistNotified = await autoFillWaitlist(req.user, appointment);
+    }
+
+    res.json(waitlistNotified ? { ...appointment.toObject(), waitlistNotified } : appointment);
   })
 );
+
+// Best-effort: when a slot frees up, notify top waiting patients (no-show prevention)
+async function autoFillWaitlist(doctor, appointment) {
+  try {
+    const Waitlist = require('../models/Waitlist');
+    const { sendMessage } = require('../services/whatsappService');
+    const candidates = await Waitlist.find({ doctorId: doctor._id, status: 'waiting' })
+      .sort({ priority: -1, createdAt: 1 })
+      .limit(5);
+    if (candidates.length === 0) return 0;
+
+    const dateStr = appointment?.date
+      ? new Date(appointment.date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
+      : '';
+    const slotText = [dateStr, appointment?.timeSlot].filter(Boolean).join(' at ');
+
+    let notified = 0;
+    for (const entry of candidates) {
+      const body =
+        `Hi ${entry.patientName}, a ${entry.service} slot has just opened up${slotText ? ` on ${slotText}` : ''} ` +
+        `at ${doctor.clinicName || 'our clinic'}. Reply or call to confirm — first come, first served!`;
+      try { await sendMessage({ to: entry.patientPhone, body }); } catch (e) { /* non-critical */ }
+      entry.status = 'notified';
+      entry.notifiedAt = new Date();
+      entry.notifyCount += 1;
+      await entry.save();
+      notified += 1;
+    }
+    return notified;
+  } catch (e) {
+    return 0;
+  }
+}
 
 // Delete (hard delete OK; status:cancelled is also supported via PUT)
 router.delete(
@@ -261,7 +300,8 @@ router.delete(
   asyncHandler(async (req, res) => {
     const result = await Appointment.findOneAndDelete({ _id: req.params.id, doctorId: req.user._id });
     if (!result) return res.status(404).json({ message: 'Appointment not found' });
-    res.json({ message: 'Appointment cancelled' });
+    const waitlistNotified = await autoFillWaitlist(req.user, result);
+    res.json({ message: 'Appointment cancelled', waitlistNotified });
   })
 );
 

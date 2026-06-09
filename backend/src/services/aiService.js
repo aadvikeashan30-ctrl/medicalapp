@@ -339,6 +339,95 @@ Respond in JSON format:
   try { return JSON.parse(result); } catch { return { raw: result, diagnosis: '', medicines: [], tests: [] }; }
 }
 
+// ========== PEDIATRIC WEIGHT-BASED DOSAGE (deterministic) ==========
+
+/**
+ * Reference table for common pediatric drugs.
+ * basis: 'dose' = mg/kg per single dose, 'day' = mg/kg per day (divided).
+ * These are widely-published reference ranges — clinical verification is required.
+ */
+const PEDIATRIC_DOSING = {
+  paracetamol: { mgPerKg: 15, basis: 'dose', dosesPerDay: 4, maxPerDay: 60, route: 'oral', note: 'Antipyretic/analgesic. Max 4 doses/day.' },
+  acetaminophen: { mgPerKg: 15, basis: 'dose', dosesPerDay: 4, maxPerDay: 60, route: 'oral', note: 'Same as paracetamol.' },
+  ibuprofen: { mgPerKg: 10, basis: 'dose', dosesPerDay: 3, maxPerDay: 40, route: 'oral', note: 'Give with food. Avoid in dehydration/renal issues.' },
+  amoxicillin: { mgPerKg: 40, basis: 'day', dosesPerDay: 2, maxPerDay: 90, route: 'oral', note: 'Divided q12h. Higher dose for otitis media.' },
+  'amoxicillin-clavulanate': { mgPerKg: 40, basis: 'day', dosesPerDay: 2, maxPerDay: 45, route: 'oral', note: 'Dose by amoxicillin component.' },
+  azithromycin: { mgPerKg: 10, basis: 'day', dosesPerDay: 1, maxPerDay: 500, route: 'oral', note: 'Once daily x3-5 days.' },
+  cefixime: { mgPerKg: 8, basis: 'day', dosesPerDay: 2, maxPerDay: 400, route: 'oral', note: 'Divided q12h.' },
+  cetirizine: { mgPerKg: 0.25, basis: 'day', dosesPerDay: 1, maxPerDay: 10, route: 'oral', note: 'Antihistamine. Age-based limits apply.' },
+  ondansetron: { mgPerKg: 0.15, basis: 'dose', dosesPerDay: 3, maxPerDay: 24, route: 'oral/IV', note: 'Antiemetic. Max 8mg/dose.' },
+  domperidone: { mgPerKg: 0.25, basis: 'dose', dosesPerDay: 3, maxPerDay: 30, route: 'oral', note: 'Before meals.' },
+  salbutamol: { mgPerKg: 0.15, basis: 'dose', dosesPerDay: 3, maxPerDay: 12, route: 'oral', note: 'Bronchodilator. Inhaled preferred.' }
+};
+
+function round1(n) { return Math.round(n * 10) / 10; }
+
+/**
+ * Compute a weight-based pediatric dose for a known drug.
+ * @returns {Object} dosing recommendation or { found:false }
+ */
+function pediatricDosage({ drug, weightKg, ageYears }) {
+  const key = String(drug || '').trim().toLowerCase();
+  const ref = PEDIATRIC_DOSING[key];
+  const weight = Number(weightKg);
+  if (!ref) return { found: false, drug, message: 'No reference dosing on file for this drug. Verify manually.' };
+  if (!weight || weight <= 0) return { found: true, drug, message: 'Patient weight is required to compute a weight-based dose.' };
+
+  let perDoseMg;
+  let perDayMg;
+  if (ref.basis === 'dose') {
+    perDoseMg = ref.mgPerKg * weight;
+    perDayMg = perDoseMg * ref.dosesPerDay;
+  } else {
+    perDayMg = ref.mgPerKg * weight;
+    perDoseMg = perDayMg / ref.dosesPerDay;
+  }
+
+  const maxDayMg = ref.maxPerDay * weight;
+  const cappedDayMg = Math.min(perDayMg, maxDayMg);
+  const capped = perDayMg > maxDayMg;
+
+  return {
+    found: true,
+    drug: key,
+    weightKg: weight,
+    ageYears: ageYears ?? null,
+    perDoseMg: round1(capped ? cappedDayMg / ref.dosesPerDay : perDoseMg),
+    perDayMg: round1(cappedDayMg),
+    dosesPerDay: ref.dosesPerDay,
+    frequency: `${ref.dosesPerDay} times/day`,
+    route: ref.route,
+    maxPerDayMg: round1(maxDayMg),
+    cappedAtMax: capped,
+    note: ref.note,
+    disclaimer: 'Weight-based estimate from standard references. Always verify against current formulary and clinical context.'
+  };
+}
+
+/**
+ * Pre-visit AI triage summary — a concise 3-bullet brief for the doctor.
+ */
+async function triageSummary({ symptoms, patient, history, vitals }) {
+  const systemMsg = {
+    role: 'system',
+    content: 'You are a pre-visit clinical intake assistant. Produce a concise brief a doctor can read in 5 seconds before entering the room. JSON: { "primaryConcern": "", "bullets": ["", "", ""], "suggestedFocus": "", "redFlags": [], "urgency": "routine|priority|urgent" }'
+  };
+  const userMsg = {
+    role: 'user',
+    content: `Patient: ${JSON.stringify(patient || {})}. Stated symptoms: ${symptoms || 'not provided'}. History: ${history || 'none'}. Vitals: ${JSON.stringify(vitals || {})}.`
+  };
+  const result = await chat([systemMsg, userMsg], { json: true, temperature: 0.2 });
+  try { return JSON.parse(result); } catch {
+    return {
+      primaryConcern: symptoms || 'See chart',
+      bullets: [symptoms || 'Patient-reported symptoms', 'Review prior history', 'Confirm current medications'],
+      suggestedFocus: 'Clarify chief complaint and duration',
+      redFlags: [],
+      urgency: 'routine'
+    };
+  }
+}
+
 module.exports = {
   chat,
   getProvider,
@@ -347,6 +436,8 @@ module.exports = {
   assessPatientRisk,
   optimizeSchedule,
   summarizeNotes,
+  pediatricDosage,
+  triageSummary,
   // New AI features
   healthAssistantChat,
   analyzeLabReport,
