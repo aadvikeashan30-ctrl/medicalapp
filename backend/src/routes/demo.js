@@ -606,6 +606,88 @@ router.delete('/labtests/:id', demoOnly, (req, res) => {
   res.json({ message: 'Lab test deleted' });
 });
 
+// ==================== MEDICAL CERTIFICATES ====================
+const DEMO_CERTIFICATES = [
+  {
+    _id: 'cert-1', certificateNo: 'CERT-00001', type: 'sick-leave', patientId: DEMO_PATIENTS[0],
+    diagnosis: 'Acute viral fever', restFromDate: new Date('2025-05-20'), restToDate: new Date('2025-05-22'),
+    restDays: 3, remarks: 'Advised bed rest and adequate hydration.', issuedTo: 'Employer',
+    status: 'active', issuedDate: new Date('2025-05-20'), createdAt: new Date('2025-05-20')
+  },
+  {
+    _id: 'cert-2', certificateNo: 'CERT-00002', type: 'fitness', patientId: DEMO_PATIENTS[2],
+    diagnosis: 'Routine medical examination', fitToResumeDate: new Date('2025-05-26'),
+    remarks: 'Found medically fit for duty.', issuedTo: 'HR Department',
+    status: 'active', issuedDate: new Date('2025-05-25'), createdAt: new Date('2025-05-25')
+  }
+];
+
+router.get('/certificates', demoOnly, (req, res) => {
+  let list = [...DEMO_CERTIFICATES];
+  if (req.query.patientId) list = list.filter((c) => (c.patientId?._id || c.patientId) === req.query.patientId);
+  if (req.query.type) list = list.filter((c) => c.type === req.query.type);
+  if (req.query.status) list = list.filter((c) => c.status === req.query.status);
+  res.json({ certificates: list, total: list.length, pages: 1, page: 1 });
+});
+
+router.get('/certificates/stats/summary', demoOnly, (req, res) => {
+  res.json({
+    total: DEMO_CERTIFICATES.length,
+    active: DEMO_CERTIFICATES.filter((c) => c.status === 'active').length,
+    sickLeave: DEMO_CERTIFICATES.filter((c) => c.type === 'sick-leave').length,
+    fitness: DEMO_CERTIFICATES.filter((c) => ['fitness', 'fitness-to-work'].includes(c.type)).length
+  });
+});
+
+router.get('/certificates/:id', demoOnly, (req, res) => {
+  const c = DEMO_CERTIFICATES.find((x) => x._id === req.params.id);
+  if (!c) return res.status(404).json({ message: 'Certificate not found' });
+  res.json(c);
+});
+
+router.post('/certificates', demoOnly, (req, res) => {
+  const patient = DEMO_PATIENTS.find((p) => p._id === req.body.patientId);
+  let restDays = req.body.restDays;
+  if (!restDays && req.body.restFromDate && req.body.restToDate) {
+    const ms = new Date(req.body.restToDate) - new Date(req.body.restFromDate);
+    if (ms >= 0) restDays = Math.floor(ms / (1000 * 60 * 60 * 24)) + 1;
+  }
+  const cert = {
+    _id: `cert-${Date.now()}`,
+    certificateNo: `CERT-${String(DEMO_CERTIFICATES.length + 1).padStart(5, '0')}`,
+    patientId: patient || DEMO_PATIENTS[0],
+    type: req.body.type || 'sick-leave',
+    diagnosis: req.body.diagnosis || '',
+    restFromDate: req.body.restFromDate,
+    restToDate: req.body.restToDate,
+    restDays,
+    fitToResumeDate: req.body.fitToResumeDate,
+    remarks: req.body.remarks || '',
+    issuedTo: req.body.issuedTo || '',
+    status: 'active',
+    issuedDate: req.body.issuedDate || new Date(),
+    createdAt: new Date()
+  };
+  DEMO_CERTIFICATES.unshift(cert);
+  res.status(201).json(cert);
+});
+
+router.put('/certificates/:id', demoOnly, (req, res) => {
+  const cert = DEMO_CERTIFICATES.find((x) => x._id === req.params.id);
+  if (!cert) return res.status(404).json({ message: 'Certificate not found' });
+  const updates = { ...req.body };
+  delete updates.certificateNo;
+  Object.assign(cert, updates);
+  res.json(cert);
+});
+
+router.delete('/certificates/:id', demoOnly, (req, res) => {
+  const idx = DEMO_CERTIFICATES.findIndex((x) => x._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Certificate not found' });
+  DEMO_CERTIFICATES.splice(idx, 1);
+  res.json({ message: 'Certificate deleted' });
+});
+
 // ==================== EXPENSES ====================
 router.get('/expenses', demoOnly, (req, res) => {
   res.json({ expenses: [

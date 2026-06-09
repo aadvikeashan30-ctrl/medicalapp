@@ -118,6 +118,14 @@ export const DEMO_RESPONSES = {
     { _id: 'med-3', name: 'Metformin', strength: '500mg', form: 'tablet', defaultFrequency: '1-0-1' }
   ],
   '/labtests': { tests: [], total: 0 },
+  '/certificates': {
+    certificates: [
+      { _id: 'cert-1', certificateNo: 'CERT-00001', type: 'sick-leave', patientId: { name: 'Ramesh Kumar', patientId: 'PAT-0001' }, diagnosis: 'Acute viral fever', restFromDate: '2025-05-20', restToDate: '2025-05-22', restDays: 3, remarks: 'Advised bed rest.', status: 'active', issuedDate: '2025-05-20', createdAt: '2025-05-20' },
+      { _id: 'cert-2', certificateNo: 'CERT-00002', type: 'fitness', patientId: { name: 'Amit Patel', patientId: 'PAT-0003' }, diagnosis: 'Routine examination', fitToResumeDate: '2025-05-26', remarks: 'Found medically fit for duty.', status: 'active', issuedDate: '2025-05-25', createdAt: '2025-05-25' }
+    ],
+    total: 2, pages: 1, page: 1
+  },
+  '/certificates/stats/summary': { total: 2, active: 2, sickLeave: 1, fitness: 1 },
   '/whatsapp/run-reminders': { processed: 5, sent: 3, failed: 0 },
   '/whatsapp/send': { message: 'Message sent (demo mode)', sent: true },
   '/whatsapp/prescription': { message: 'Prescription shared (demo mode)', sent: true },
@@ -212,6 +220,10 @@ export function getDemoResponse(url) {
   if (cleanPath.includes('medicine')) return DEMO_RESPONSES['/medicines'];
   if (cleanPath.includes('expense')) return DEMO_RESPONSES['/expenses'];
   if (cleanPath.includes('labtest') || cleanPath.includes('lab-test')) return DEMO_RESPONSES['/labtests'];
+  if (cleanPath.includes('certificate')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/certificates/stats/summary'];
+    return DEMO_RESPONSES['/certificates'];
+  }
   if (cleanPath.includes('patient')) return DEMO_RESPONSES['/patients'];
 
   // Default — return empty but valid response (no error message)

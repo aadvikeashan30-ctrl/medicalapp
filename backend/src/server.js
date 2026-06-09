@@ -186,6 +186,7 @@ app.use('/api/chatbot', require('./routes/chatbot'));
 
 // Doctor Features (AI-powered)
 app.use('/api/doctor', require('./routes/doctor'));
+app.use('/api/certificates', require('./routes/certificates'));
 
 // Business Features
 app.use('/api/membership', require('./routes/membership'));
