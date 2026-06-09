@@ -1460,5 +1460,190 @@ router.get('/subscription/seats', demoOnly, (req, res) => {
   res.json({ plan: 'pro', seatsUsed: 3, seatLimit: 5, seatsAvailable: 2, pricePerSeat: 249, monthlyCommitment: 747, trial: { active: false, daysRemaining: 320, lengthDays: 60 } });
 });
 
+// ==================== ASYNC CONSULTATIONS ====================
+const DEMO_ASYNC = [
+  { _id: 'ac-1', patientId: DEMO_PATIENTS[2], patientName: 'Amit Patel', patientPhone: '9876543212', category: 'dermatology', description: 'Itchy red rash on forearm for 4 days, spreading slowly. Photo attached.', photos: ['/uploads/demo-rash.jpg'], priority: 'normal', status: 'pending', createdAt: new Date(Date.now() - 2 * 3600000).toISOString() },
+  { _id: 'ac-2', patientId: DEMO_PATIENTS[0], patientName: 'Ramesh Kumar', patientPhone: '9876543210', category: 'wound-check', description: 'Post-op wound looks slightly red around edges. Is this normal?', photos: ['/uploads/demo-wound-2.jpg'], priority: 'high', status: 'in-review', createdAt: new Date(Date.now() - 6 * 3600000).toISOString() },
+  { _id: 'ac-3', patientId: DEMO_PATIENTS[1], patientName: 'Priya Sharma', patientPhone: '9876543211', category: 'medication-query', description: 'Can I take my BP medicine with the new antibiotic?', photos: [], priority: 'normal', status: 'responded', response: { text: 'Yes, safe to take together. Space them 2 hours apart.', respondedAt: new Date(Date.now() - 86400000).toISOString() }, createdAt: new Date(Date.now() - 90000000).toISOString() }
+];
+
+router.get('/async-consults', demoOnly, (req, res) => {
+  let list = [...DEMO_ASYNC];
+  if (req.query.status) list = list.filter((c) => c.status === req.query.status);
+  if (req.query.category) list = list.filter((c) => c.category === req.query.category);
+  res.json({ consults: list, total: list.length });
+});
+
+router.get('/async-consults/stats/summary', demoOnly, (req, res) => {
+  res.json({
+    pending: DEMO_ASYNC.filter((c) => c.status === 'pending').length,
+    inReview: DEMO_ASYNC.filter((c) => c.status === 'in-review').length,
+    responded: DEMO_ASYNC.filter((c) => c.status === 'responded').length,
+    high: DEMO_ASYNC.filter((c) => ['pending', 'in-review'].includes(c.status) && c.priority === 'high').length,
+    openTotal: DEMO_ASYNC.filter((c) => ['pending', 'in-review'].includes(c.status)).length
+  });
+});
+
+router.get('/async-consults/:id', demoOnly, (req, res) => {
+  const c = DEMO_ASYNC.find((x) => x._id === req.params.id);
+  if (!c) return res.status(404).json({ message: 'Consultation not found' });
+  res.json(c);
+});
+
+router.post('/async-consults', demoOnly, (req, res) => {
+  const c = { _id: `ac-${Date.now()}`, status: 'pending', priority: 'normal', photos: [], createdAt: new Date().toISOString(), ...req.body };
+  DEMO_ASYNC.unshift(c);
+  res.status(201).json(c);
+});
+
+router.post('/async-consults/:id/claim', demoOnly, (req, res) => {
+  const c = DEMO_ASYNC.find((x) => x._id === req.params.id);
+  if (!c) return res.status(404).json({ message: 'Consultation not found' });
+  c.status = 'in-review';
+  res.json(c);
+});
+
+router.post('/async-consults/:id/respond', demoOnly, (req, res) => {
+  const c = DEMO_ASYNC.find((x) => x._id === req.params.id);
+  if (!c) return res.status(404).json({ message: 'Consultation not found' });
+  c.response = { text: req.body.text, respondedAt: new Date().toISOString(), followUpAdvised: !!req.body.followUpAdvised };
+  c.status = 'responded';
+  res.json(c);
+});
+
+router.put('/async-consults/:id', demoOnly, (req, res) => {
+  const c = DEMO_ASYNC.find((x) => x._id === req.params.id);
+  if (!c) return res.status(404).json({ message: 'Consultation not found' });
+  Object.assign(c, req.body);
+  res.json(c);
+});
+
+router.delete('/async-consults/:id', demoOnly, (req, res) => {
+  const idx = DEMO_ASYNC.findIndex((x) => x._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Consultation not found' });
+  DEMO_ASYNC.splice(idx, 1);
+  res.json({ message: 'Consultation removed' });
+});
+
+// ==================== WEARABLES ====================
+const DEMO_WEARABLES = [
+  { _id: 'wd-1', patientId: DEMO_PATIENTS[3], patientName: 'Sunita Reddy', deviceType: 'cgm', metric: 'glucose', unit: 'mg/dL', thresholds: { min: 70, max: 180 }, status: 'connected', alertActive: true, alertSince: new Date(Date.now() - 2 * 3600000).toISOString(), lastSyncedAt: new Date(Date.now() - 1800000).toISOString(), readings: [ { _id: 'r1', value: 165, takenAt: new Date(Date.now() - 5 * 3600000).toISOString(), flagged: false }, { _id: 'r2', value: 192, takenAt: new Date(Date.now() - 3600000).toISOString(), flagged: true } ] },
+  { _id: 'wd-2', patientId: DEMO_PATIENTS[0], patientName: 'Ramesh Kumar', deviceType: 'bp-cuff', metric: 'blood-pressure', unit: 'mmHg', thresholds: { min: 90, max: 140, minSecondary: 60, maxSecondary: 90 }, status: 'connected', alertActive: false, lastSyncedAt: new Date(Date.now() - 7200000).toISOString(), readings: [ { _id: 'r3', value: 128, secondaryValue: 82, takenAt: new Date(Date.now() - 7200000).toISOString(), flagged: false } ] }
+];
+
+router.get('/wearables', demoOnly, (req, res) => {
+  let list = [...DEMO_WEARABLES];
+  if (req.query.patientId) list = list.filter((d) => (d.patientId?._id || d.patientId) === req.query.patientId);
+  if (req.query.alert === 'true') list = list.filter((d) => d.alertActive);
+  res.json({ devices: list, total: list.length });
+});
+
+router.get('/wearables/stats/summary', demoOnly, (req, res) => {
+  res.json({ connected: DEMO_WEARABLES.filter((d) => d.status === 'connected').length, alerts: DEMO_WEARABLES.filter((d) => d.alertActive).length, total: DEMO_WEARABLES.length });
+});
+
+router.get('/wearables/:id', demoOnly, (req, res) => {
+  const d = DEMO_WEARABLES.find((x) => x._id === req.params.id);
+  if (!d) return res.status(404).json({ message: 'Device not found' });
+  res.json(d);
+});
+
+router.post('/wearables', demoOnly, (req, res) => {
+  const patient = DEMO_PATIENTS.find((p) => p._id === req.body.patientId) || DEMO_PATIENTS[0];
+  const d = { _id: `wd-${Date.now()}`, patientId: patient, patientName: patient.name, deviceType: req.body.deviceType || 'apple-watch', metric: req.body.metric, unit: req.body.unit || '', thresholds: req.body.thresholds || {}, status: 'connected', alertActive: false, lastSyncedAt: new Date().toISOString(), readings: [] };
+  DEMO_WEARABLES.unshift(d);
+  res.status(201).json(d);
+});
+
+router.post('/wearables/:id/sync', demoOnly, (req, res) => {
+  const d = DEMO_WEARABLES.find((x) => x._id === req.params.id);
+  if (!d) return res.status(404).json({ message: 'Device not found' });
+  const mid = ((d.thresholds?.min ?? 60) + (d.thresholds?.max ?? 120)) / 2;
+  for (let i = 0; i < 6; i++) {
+    const v = Math.round((mid + (Math.random() - 0.4) * 40) * 10) / 10;
+    d.readings.push({ _id: `r-${Date.now()}-${i}`, value: v, takenAt: new Date(Date.now() - (6 - i) * 3600000).toISOString(), flagged: d.thresholds?.max != null && v > d.thresholds.max });
+  }
+  d.lastSyncedAt = new Date().toISOString();
+  d.alertActive = d.readings[d.readings.length - 1].flagged;
+  res.json({ device: d, synced: 6 });
+});
+
+router.post('/wearables/:id/reading', demoOnly, (req, res) => {
+  const d = DEMO_WEARABLES.find((x) => x._id === req.params.id);
+  if (!d) return res.status(404).json({ message: 'Device not found' });
+  const v = Number(req.body.value);
+  const flagged = d.thresholds?.max != null && v > d.thresholds.max;
+  d.readings.push({ _id: `r-${Date.now()}`, value: v, secondaryValue: req.body.secondaryValue, takenAt: new Date().toISOString(), flagged });
+  d.alertActive = flagged;
+  res.status(201).json({ device: d, flagged });
+});
+
+router.put('/wearables/:id', demoOnly, (req, res) => {
+  const d = DEMO_WEARABLES.find((x) => x._id === req.params.id);
+  if (!d) return res.status(404).json({ message: 'Device not found' });
+  Object.assign(d, req.body);
+  res.json(d);
+});
+
+router.delete('/wearables/:id', demoOnly, (req, res) => {
+  const idx = DEMO_WEARABLES.findIndex((x) => x._id === req.params.id);
+  if (idx === -1) return res.status(404).json({ message: 'Device not found' });
+  DEMO_WEARABLES.splice(idx, 1);
+  res.json({ message: 'Device removed' });
+});
+
+// ==================== FHIR ====================
+router.get('/fhir/metadata', demoOnly, (req, res) => {
+  res.json({ resourceType: 'CapabilityStatement', status: 'active', fhirVersion: '4.0.1', format: ['json'], publisher: 'DocClinic Pro', externalServer: null,
+    rest: [{ mode: 'server', resource: [{ type: 'Patient', interaction: [{ code: 'read' }, { code: 'create' }] }, { type: 'Appointment', interaction: [{ code: 'read' }] }, { type: 'MedicationRequest', interaction: [{ code: 'read' }] }] }] });
+});
+
+router.get('/fhir/Patient/:id', demoOnly, (req, res) => {
+  const p = DEMO_PATIENTS.find((x) => x._id === req.params.id) || DEMO_PATIENTS[0];
+  res.json({ resourceType: 'Patient', id: p._id, identifier: [{ system: 'urn:docclinic:patientId', value: p.patientId }], active: true, name: [{ use: 'official', text: p.name }], telecom: [{ system: 'phone', value: p.phone, use: 'mobile' }], gender: p.gender });
+});
+
+router.get('/fhir/Patient/:id/everything', demoOnly, (req, res) => {
+  const p = DEMO_PATIENTS.find((x) => x._id === req.params.id) || DEMO_PATIENTS[0];
+  const ref = `Patient/${p._id}`;
+  res.json({ resourceType: 'Bundle', type: 'searchset', timestamp: new Date().toISOString(), total: 3, entry: [
+    { resource: { resourceType: 'Patient', id: p._id, name: [{ text: p.name }], gender: p.gender, telecom: [{ system: 'phone', value: p.phone }] } },
+    { resource: { resourceType: 'Appointment', status: 'fulfilled', start: new Date().toISOString(), participant: [{ actor: { reference: ref } }] } },
+    { resource: { resourceType: 'MedicationRequest', status: 'active', intent: 'order', medicationCodeableConcept: { text: 'Amlodipine 5mg' }, subject: { reference: ref } } }
+  ] });
+});
+
+router.post('/fhir/Patient', demoOnly, (req, res) => {
+  const name = req.body?.name?.[0]?.text || 'Imported Patient';
+  res.status(201).json({ message: 'Imported', localId: `pat-${Date.now()}`, patientId: `PAT-${String(DEMO_PATIENTS.length + 1).padStart(4, '0')}`, fhir: { resourceType: 'Patient', name: [{ text: name }] } });
+});
+
+// ==================== DOCTOR SLOT PLAN (#7) ====================
+router.post('/doctor/slot-plan', demoOnly, (req, res) => {
+  res.json({
+    date: req.body.date || new Date().toISOString(), total: 5,
+    morningBlock: { label: 'Short / virtual follow-ups (AM)', count: 3, items: [
+      { patient: 'Priya Sharma', type: 'follow-up', mode: 'video', duration: 15, currentSlot: '09:30 AM', suggestedSlot: '09:00' },
+      { patient: 'Ramesh Kumar', type: 'follow-up', mode: 'phone', duration: 10, currentSlot: '11:00 AM', suggestedSlot: '09:15' },
+      { patient: 'Vikram Singh', type: 'checkup', mode: 'in-person', duration: 15, currentSlot: '11:00 AM', suggestedSlot: '09:30' }
+    ] },
+    afternoonBlock: { label: 'Complex / in-person evaluations (PM)', count: 2, items: [
+      { patient: 'Amit Patel', type: 'consultation', mode: 'in-person', duration: 30, currentSlot: '10:00 AM', suggestedSlot: '14:00' },
+      { patient: 'Sunita Reddy', type: 'consultation', mode: 'in-person', duration: 30, currentSlot: '10:30 AM', suggestedSlot: '14:30' }
+    ] },
+    rationale: ['Batch quick virtual follow-ups early to clear volume.', 'Reserve afternoons for demanding in-person evaluations.', 'Group similar consultation modes to cut context-switching.']
+  });
+});
+
+// ==================== TELEMEDICINE FAILOVER (#6) ====================
+router.post('/telemedicine/failover/:appointmentId', demoOnly, (req, res) => {
+  res.json({ message: 'Failover call simulated (no telephony provider configured)', mode: 'phone', call: { callId: `call_${Date.now().toString(36)}`, provider: 'stub', status: 'dialing', configured: false }, voipConfigured: false });
+});
+
+router.get('/telemedicine/today', demoOnly, (req, res) => {
+  const list = DEMO_APPOINTMENTS.slice(0, 2).map((a) => ({ ...a, consultationMode: 'video' }));
+  res.json({ appointments: list, total: list.length, completed: 0, pending: list.length, inProgress: 0 });
+});
+
 module.exports = router;
 module.exports.DEMO_USERS = DEMO_USERS;

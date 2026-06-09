@@ -273,6 +273,60 @@ router.post(
   })
 );
 
+// ========== SMART SLOT CLUSTERING ==========
+
+// Reorganize a day into energy-protecting clusters: short virtual follow-ups
+// batched in the morning, complex in-person evaluations in the afternoon.
+router.post(
+  '/slot-plan',
+  auth,
+  asyncHandler(async (req, res) => {
+    const Appointment = require('../models/Appointment');
+    const target = req.body.date ? new Date(req.body.date) : new Date();
+    if (Number.isNaN(target.getTime())) return res.status(400).json({ message: 'Invalid date' });
+    const dayStart = new Date(target); dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart); dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const appts = await Appointment.find({
+      doctorId: req.user._id,
+      date: { $gte: dayStart, $lt: dayEnd },
+      status: { $nin: ['cancelled', 'no-show'] }
+    }).populate('patientId', 'name');
+
+    // Classify each appointment
+    const isVirtual = (a) => a.consultationMode === 'video' || a.consultationMode === 'phone';
+    const isShort = (a) => ['follow-up', 'checkup'].includes(a.type) || (a.duration || 30) <= 15;
+
+    const morning = []; // short / virtual follow-ups
+    const afternoon = []; // complex / in-person
+    appts.forEach((a) => {
+      const item = { id: a._id, patient: a.patientId?.name, type: a.type, mode: a.consultationMode, duration: a.duration || 30, currentSlot: a.timeSlot };
+      if (isVirtual(a) && isShort(a)) morning.push(item);
+      else if (isShort(a)) morning.push(item);
+      else afternoon.push(item);
+    });
+
+    // Assign suggested times
+    const hrs = req.user.workingHours || { start: '09:00', end: '18:00' };
+    let m = parseInt((hrs.start || '09:00').split(':')[0], 10);
+    const assignMorning = morning.map((it, i) => ({ ...it, suggestedSlot: `${String(m + Math.floor(i / 4)).padStart(2, '0')}:${(i % 4) * 15 === 0 ? '00' : (i % 4) * 15}` }));
+    let p = 14;
+    const assignAfternoon = afternoon.map((it, i) => ({ ...it, suggestedSlot: `${String(p + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 === 0 ? '00' : '30'}` }));
+
+    res.json({
+      date: dayStart,
+      total: appts.length,
+      morningBlock: { label: 'Short / virtual follow-ups (AM)', count: assignMorning.length, items: assignMorning },
+      afternoonBlock: { label: 'Complex / in-person evaluations (PM)', count: assignAfternoon.length, items: assignAfternoon },
+      rationale: [
+        'Batch quick virtual follow-ups early to build momentum and clear volume.',
+        'Reserve afternoons for cognitively demanding, in-person evaluations.',
+        'Keep context-switching low by grouping similar consultation modes.'
+      ]
+    });
+  })
+);
+
 // ========== AI CLINICAL NOTE SUMMARIZER ==========
 
 // Convert free-text / voice notes into a structured SOAP summary with ICD-10
