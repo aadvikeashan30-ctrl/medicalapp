@@ -8,10 +8,11 @@ import {
   FiShield, FiMessageCircle, FiCpu, FiMic,
   FiEdit3, FiAward, FiGift, FiSend, FiStar,
   FiTrendingUp, FiMapPin, FiDatabase, FiGlobe,
-  FiChevronDown
+  FiChevronDown, FiList, FiCamera
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
 import NotificationCenter from './NotificationCenter';
+import AccessibilityWidget from './AccessibilityWidget';
 
 /* ─── Primary nav items (shown in top bar) ───────────────────────── */
 const primaryNav = [
@@ -37,6 +38,8 @@ const moreNavGroups = [
       { path: '/waitlist',         icon: FiClock,         label: 'Waitlist Auto-Fill' },
       { path: '/patient-insights', icon: FiTrendingUp,    label: 'Patient Insights' },
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
+      { path: '/care-pathways',    icon: FiList,          label: 'Care Pathways' },
+      { path: '/wound-tracker',    icon: FiCamera,        label: 'Wound & Skin Tracker' },
       { path: '/vaccinations',     icon: FiShield,        label: 'Vaccinations' },
       { path: '/certificates',     icon: FiAward,         label: 'Medical Certificates' },
       { path: '/availability',     icon: FiCalendar,      label: 'Availability & Leave' },
@@ -379,6 +382,8 @@ export default function Layout() {
           <Outlet />
         </div>
       </main>
+
+      <AccessibilityWidget />
     </div>
   );
 }

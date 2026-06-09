@@ -177,6 +177,38 @@ export const DEMO_RESPONSES = {
     total: 3
   },
   '/waitlist/stats/summary': { waiting: 2, notified: 1, booked: 0, high: 2 },
+  '/care-pathways': {
+    pathways: [
+      {
+        _id: 'cp-1', patientId: { name: 'Sunita Reddy', patientId: 'PAT-0004' }, patientName: 'Sunita Reddy', patientPhone: '9876543213',
+        title: 'Diabetes Management Plan', diagnosis: 'Type 2 Diabetes', status: 'active', startDate: new Date(Date.now() - 5 * 86400000).toISOString(),
+        tasks: [
+          { _id: 'tk-1', label: 'Take Metformin 500mg', category: 'medication', time: '08:00 AM', frequency: 'daily', instructions: 'After breakfast' },
+          { _id: 'tk-2', label: 'Take Metformin 500mg', category: 'medication', time: '08:00 PM', frequency: 'daily', instructions: 'After dinner' },
+          { _id: 'tk-3', label: 'Log fasting blood sugar', category: 'measurement', time: 'Morning', frequency: 'daily' },
+          { _id: 'tk-4', label: '30 min brisk walk', category: 'exercise', time: 'Evening', frequency: 'daily' }
+        ],
+        completions: [{ taskId: 'tk-1', date: new Date().toISOString().slice(0, 10) }, { taskId: 'tk-3', date: new Date().toISOString().slice(0, 10) }]
+      }
+    ],
+    total: 1
+  },
+  '/care-pathways/stats/summary': { active: 2, completed: 0, total: 2 },
+  '/progress': {
+    trackers: [
+      {
+        _id: 'pt-1', patientId: { name: 'Ramesh Kumar', patientId: 'PAT-0001' }, patientName: 'Ramesh Kumar',
+        bodyArea: 'Left forearm', condition: 'Post-op suture site', status: 'active',
+        entries: [
+          { _id: 'en-1', date: new Date(Date.now() - 10 * 86400000).toISOString(), photoUrl: '/uploads/demo-wound-1.jpg', note: 'Sutures intact, mild redness', assessment: 'stable' },
+          { _id: 'en-2', date: new Date(Date.now() - 4 * 86400000).toISOString(), photoUrl: '/uploads/demo-wound-2.jpg', note: 'Redness reduced, healing well', assessment: 'improving' }
+        ],
+        createdAt: new Date(Date.now() - 10 * 86400000).toISOString()
+      }
+    ],
+    total: 1
+  },
+  '/progress/stats/summary': { active: 1, healed: 0, total: 1 },
   '/doctor/scribe': {
     soap: {
       subjective: 'Patient reports cough and mild fever for 3 days, no breathing difficulty.',
@@ -305,6 +337,14 @@ export function getDemoResponse(url) {
   if (cleanPath.includes('waitlist')) {
     if (cleanPath.includes('stats')) return DEMO_RESPONSES['/waitlist/stats/summary'];
     return DEMO_RESPONSES['/waitlist'];
+  }
+  if (cleanPath.includes('care-pathway')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/care-pathways/stats/summary'];
+    return DEMO_RESPONSES['/care-pathways'];
+  }
+  if (cleanPath.includes('progress')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/progress/stats/summary'];
+    return DEMO_RESPONSES['/progress'];
   }
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];
