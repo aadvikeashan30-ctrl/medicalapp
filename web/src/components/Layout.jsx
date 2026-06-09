@@ -37,6 +37,7 @@ const moreNavGroups = [
       { path: '/patient-insights', icon: FiTrendingUp,    label: 'Patient Insights' },
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
       { path: '/vaccinations',     icon: FiShield,        label: 'Vaccinations' },
+      { path: '/certificates',     icon: FiAward,         label: 'Medical Certificates' },
     ]
   },
   {

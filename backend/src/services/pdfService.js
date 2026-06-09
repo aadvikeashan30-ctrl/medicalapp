@@ -256,4 +256,122 @@ function generateInvoicePDF(invoice, doctor) {
   });
 }
 
-module.exports = { generatePrescriptionPDF, generateInvoicePDF };
+/**
+ * Generate a medical certificate PDF (sick-leave / fitness / medical)
+ * @param {Object} cert - Populated MedicalCertificate object
+ * @param {Object} doctor - Doctor/user object
+ * @returns {Promise<Buffer>} PDF buffer
+ */
+function generateCertificatePDF(cert, doctor) {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const buffers = [];
+
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+
+    const pageWidth = doc.page.width - 100;
+    const fmt = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '');
+
+    const TITLES = {
+      'sick-leave': 'MEDICAL / SICK LEAVE CERTIFICATE',
+      fitness: 'FITNESS CERTIFICATE',
+      medical: 'MEDICAL CERTIFICATE',
+      'fitness-to-work': 'FITNESS TO RESUME WORK CERTIFICATE',
+      travel: 'FITNESS TO TRAVEL CERTIFICATE',
+      custom: 'MEDICAL CERTIFICATE'
+    };
+
+    // Header - Doctor info
+    doc.fontSize(18).fillColor('#1e40af').font('Helvetica-Bold')
+      .text(`Dr. ${doctor.name}`, 50, 50);
+    doc.fontSize(10).fillColor('#6b7280').font('Helvetica')
+      .text(`${(doctor.specialty || 'General Physician').toUpperCase()} | ${doctor.qualification || 'MBBS'}`, 50, 72)
+      .text(`Reg. No: ${doctor.registrationNo || 'N/A'}`, 50, 86);
+
+    // Clinic info (right aligned)
+    doc.fontSize(9).fillColor('#6b7280')
+      .text(doctor.clinicName || '', 300, 50, { align: 'right', width: pageWidth - 250 })
+      .text(doctor.clinicAddress || '', 300, 63, { align: 'right', width: pageWidth - 250 })
+      .text(`${doctor.clinicCity || ''} | Ph: ${doctor.phone || ''}`, 300, 76, { align: 'right', width: pageWidth - 250 });
+
+    // Divider
+    doc.moveTo(50, 105).lineTo(50 + pageWidth, 105).strokeColor('#e5e7eb').lineWidth(1).stroke();
+
+    // Title
+    doc.fontSize(15).fillColor('#1f2937').font('Helvetica-Bold')
+      .text(TITLES[cert.type] || TITLES.medical, 50, 122, { align: 'center', width: pageWidth });
+    doc.fontSize(9).fillColor('#6b7280').font('Helvetica')
+      .text(`${cert.certificateNo || ''}  |  Date: ${fmt(cert.issuedDate || cert.createdAt)}`, 50, 145, { align: 'center', width: pageWidth });
+
+    let y = 180;
+
+    // Patient info box
+    const patient = cert.patientId || {};
+    doc.roundedRect(50, y, pageWidth, 50, 5).fillColor('#f8fafc').fill();
+    doc.fillColor('#374151').fontSize(10).font('Helvetica-Bold')
+      .text(`Patient: ${patient.name || 'N/A'}`, 60, y + 10);
+    doc.font('Helvetica').fontSize(9).fillColor('#6b7280')
+      .text(`ID: ${patient.patientId || 'N/A'} | Age: ${patient.age || '?'} | Gender: ${(patient.gender || '?').toUpperCase()}`, 60, y + 27)
+      .text(`Phone: ${patient.phone || 'N/A'}`, 350, y + 27);
+    y += 70;
+
+    // Body — assemble certificate statement based on type
+    doc.fontSize(11).fillColor('#1f2937').font('Helvetica');
+    const lines = [];
+
+    lines.push(`This is to certify that I have examined ${patient.name || 'the patient'}${patient.age ? `, aged ${patient.age} years` : ''} on ${fmt(cert.issuedDate || cert.createdAt)}.`);
+
+    if (cert.diagnosis) {
+      lines.push(`Diagnosis / Condition: ${cert.diagnosis}.`);
+    }
+
+    if (cert.type === 'sick-leave' || cert.type === 'medical') {
+      if (cert.restFromDate && cert.restToDate) {
+        lines.push(`In my professional opinion, the patient is advised rest / is unfit for duty from ${fmt(cert.restFromDate)} to ${fmt(cert.restToDate)}${cert.restDays ? ` (${cert.restDays} day${cert.restDays > 1 ? 's' : ''})` : ''}.`);
+      } else if (cert.restDays) {
+        lines.push(`In my professional opinion, the patient is advised rest for ${cert.restDays} day${cert.restDays > 1 ? 's' : ''}.`);
+      }
+      if (cert.fitToResumeDate) {
+        lines.push(`The patient is expected to be fit to resume normal duties from ${fmt(cert.fitToResumeDate)}.`);
+      }
+    } else if (cert.type === 'fitness' || cert.type === 'fitness-to-work') {
+      lines.push(`Based on my examination, the patient is found to be medically FIT to resume normal duties / work${cert.fitToResumeDate ? ` with effect from ${fmt(cert.fitToResumeDate)}` : ''}.`);
+    } else if (cert.type === 'travel') {
+      lines.push(`Based on my examination, the patient is found to be medically FIT to travel.`);
+    }
+
+    if (cert.remarks) {
+      lines.push(`Remarks: ${cert.remarks}`);
+    }
+
+    lines.forEach((line) => {
+      doc.text(line, 50, y, { width: pageWidth, align: 'left', lineGap: 3 });
+      y += doc.heightOfString(line, { width: pageWidth, lineGap: 3 }) + 12;
+    });
+
+    if (cert.issuedTo) {
+      y += 4;
+      doc.fontSize(9).fillColor('#6b7280').font('Helvetica-Oblique')
+        .text(`Issued to: ${cert.issuedTo}`, 50, y, { width: pageWidth });
+      y += 24;
+    }
+
+    // Signature block (bottom-right)
+    const sigY = Math.max(y + 40, 660);
+    doc.fontSize(10).fillColor('#1f2937').font('Helvetica-Bold')
+      .text(`Dr. ${doctor.name}`, 300, sigY, { align: 'right', width: pageWidth - 250 });
+    doc.fontSize(9).fillColor('#6b7280').font('Helvetica')
+      .text(`${doctor.qualification || 'MBBS'} | Reg. No: ${doctor.registrationNo || 'N/A'}`, 300, sigY + 14, { align: 'right', width: pageWidth - 250 })
+      .text('Signature & Seal', 300, sigY + 28, { align: 'right', width: pageWidth - 250 });
+
+    // Footer
+    doc.fontSize(8).fillColor('#9ca3af').font('Helvetica')
+      .text('Generated by DocClinic Pro | This is a computer-generated medical certificate', 50, 770, { align: 'center', width: pageWidth });
+
+    doc.end();
+  });
+}
+
+module.exports = { generatePrescriptionPDF, generateInvoicePDF, generateCertificatePDF };
