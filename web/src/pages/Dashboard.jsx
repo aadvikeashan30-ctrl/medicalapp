@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiUsers, FiCalendar, FiClock, FiCheckCircle,
   FiAlertCircle, FiUserPlus, FiActivity, FiDollarSign,
   FiRefreshCw, FiArrowUpRight, FiPlay, FiCheck,
-  FiFileText, FiMonitor, FiFilter
+  FiFileText, FiMonitor, FiFilter, FiTrendingUp
 } from 'react-icons/fi';
 import { FaWhatsapp, FaFlask, FaRupeeSign, FaVideo } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -82,13 +82,51 @@ const STATUS_CFG = {
   'CHECKOUT_COMPLETED': { label: 'Checked Out', cls: 'status-completed' },
 };
 
-/* ─── Stat Card ─────────────────────────────────────────────────── */
-function StatCard({ icon: Icon, iconCls, label, value, suffix, badge, badgeCls, isRevenue, delay }) {
+/* ─── 3D tilt hook: tracks cursor for rotateX/Y + glow position ── */
+function useTilt(max = 9) {
+  const ref = useRef(null);
+  const onMove = useCallback((e) => {
+    const el = ref.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const px = (e.clientX - r.left) / r.width;
+    const py = (e.clientY - r.top) / r.height;
+    el.style.setProperty('--ry', `${(px - 0.5) * max * 2}deg`);
+    el.style.setProperty('--rx', `${(0.5 - py) * max * 2}deg`);
+    el.style.setProperty('--mx', `${px * 100}%`);
+    el.style.setProperty('--my', `${py * 100}%`);
+  }, [max]);
+  const onLeave = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty('--ry', '0deg');
+    el.style.setProperty('--rx', '0deg');
+  }, []);
+  return { ref, onMouseMove: onMove, onMouseLeave: onLeave };
+}
+
+/* ─── Live ticking clock ───────────────────────────────────────── */
+function useClock() {
+  const [t, setT] = useState(new Date());
+  useEffect(() => {
+    const id = setInterval(() => setT(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return t;
+}
+
+/* ─── 3D Stat Card ──────────────────────────────────────────────── */
+function StatCard({ icon: Icon, accent, label, value, suffix, badge, badgeCls, isRevenue, delay }) {
+  const tilt = useTilt(10);
   return (
-    <div className="stat-card animate-fade-up" style={{ animationDelay: delay }}>
-      <div className="flex items-start justify-between mb-3">
-        <div className={`stat-icon ${iconCls}`}>
-          <Icon size={20} />
+    <div
+      {...tilt}
+      className={`stat-3d tilt-3d ${accent} animate-pop`}
+      style={{ animationDelay: delay }}
+    >
+      <div className="flex items-start justify-between mb-3 depth-2">
+        <div className="stat-3d-icon">
+          <Icon size={22} />
         </div>
         {badge && (
           <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badgeCls}`}>
@@ -96,25 +134,26 @@ function StatCard({ icon: Icon, iconCls, label, value, suffix, badge, badgeCls, 
           </span>
         )}
       </div>
-      <p className="text-2xl font-bold text-gray-900 tabular-nums leading-none">
-        {isRevenue && <span className="text-base opacity-60">₹</span>}
+      <p className="text-[28px] font-extrabold text-gray-900 tabular-nums leading-none depth-1">
+        {isRevenue && <span className="text-lg opacity-50">₹</span>}
         <AnimatedCounter end={Number(value || 0)} />
-        {suffix && <span className="text-base font-medium text-gray-500 ml-1">{suffix}</span>}
+        {suffix && <span className="text-base font-medium text-gray-400 ml-1">{suffix}</span>}
       </p>
-      <p className="text-sm text-gray-500 mt-1">{label}</p>
+      <p className="text-sm text-gray-500 mt-1.5 depth-1">{label}</p>
     </div>
   );
 }
 
-/* ─── Quick Action Tile ─────────────────────────────────────────── */
+/* ─── Quick Action Tile (3D) ────────────────────────────────────── */
 function QuickAction({ icon: Icon, label, to, colorCls, iconColor }) {
+  const tilt = useTilt(12);
   return (
-    <Link to={to} className={`quick-action-btn ${colorCls} hover-lift`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center`}
-           style={{ background: iconColor + '22' }}>
-        <Icon size={18} style={{ color: iconColor }} />
+    <Link to={to} {...tilt} className={`quick-action-btn tilt-3d ${colorCls}`}>
+      <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white depth-2 shadow-md"
+           style={{ background: `linear-gradient(135deg, ${iconColor}, ${iconColor}cc)`, boxShadow: `0 8px 18px -6px ${iconColor}99` }}>
+        <Icon size={19} />
       </div>
-      <span className="text-xs font-semibold text-gray-700 leading-tight">{label}</span>
+      <span className="text-xs font-semibold text-gray-700 leading-tight depth-1">{label}</span>
     </Link>
   );
 }
@@ -138,9 +177,9 @@ function UpcomingRow({ time, name, sub, idx }) {
 
 /* ─── Daily Revenue (day-wise, multi-source) ───────────────────── */
 const REV_SOURCES = [
-  { key: 'consultation', label: 'Consultation', color: '#1a8c8c' },
-  { key: 'lab',          label: 'Lab',          color: '#0369a1' },
-  { key: 'pharmacy',     label: 'Pharmacy / Medicines', color: '#b45309' },
+  { key: 'consultation', label: 'Consultation',           color: '#1a8c8c', grad: 'linear-gradient(180deg,#2aa0a0,#0d8080)' },
+  { key: 'lab',          label: 'Lab',                     color: '#0369a1', grad: 'linear-gradient(180deg,#22d3ee,#0369a1)' },
+  { key: 'pharmacy',     label: 'Pharmacy / Medicines',    color: '#b45309', grad: 'linear-gradient(180deg,#f59e0b,#b45309)' },
 ];
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 
@@ -149,17 +188,35 @@ function DailyRevenueCard({ data, loading }) {
   const totals = data?.totals || { consultation: 0, lab: 0, pharmacy: 0, total: 0 };
   const today = data?.today;
   const maxTotal = Math.max(...series.map(s => s.total), 1);
+  const avg = series.length ? Math.round(totals.total / series.length) : 0;
 
   return (
-    <div className="card animate-fade-up stagger-4">
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div>
-          <h2 className="text-base font-bold text-gray-900">Daily Revenue</h2>
-          <p className="text-xs text-gray-400">Last {data?.days || 14} days · consultation + lab + pharmacy</p>
+    <div className="card animate-pop stagger-4 relative overflow-hidden">
+      {/* soft corner glow */}
+      <div className="pointer-events-none absolute -top-16 -right-16 w-52 h-52 rounded-full"
+           style={{ background: 'radial-gradient(circle, rgba(13,128,128,0.10), transparent 70%)' }} />
+
+      <div className="flex items-center justify-between mb-5 flex-wrap gap-3 relative">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-lg"
+               style={{ background: 'linear-gradient(135deg,#0d4a4a,#1a8c8c)', boxShadow: '0 8px 20px -6px rgba(26,140,140,0.6)' }}>
+            <FiTrendingUp size={20} />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Daily Revenue</h2>
+            <p className="text-xs text-gray-400">Last {data?.days || 14} days · consultation + lab + pharmacy</p>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-[11px] text-gray-400">Today</p>
-          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--nav-bg)' }}>{inr(today?.total)}</p>
+        <div className="flex items-center gap-2">
+          <div className="text-right px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100">
+            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Avg / day</p>
+            <p className="text-sm font-bold text-gray-700 tabular-nums">{inr(avg)}</p>
+          </div>
+          <div className="text-right px-4 py-2 rounded-2xl text-white shadow-md"
+               style={{ background: 'linear-gradient(135deg,#0d4a4a,#157878)' }}>
+            <p className="text-[10px] text-white/70 uppercase tracking-wide">Today</p>
+            <p className="text-base font-extrabold tabular-nums">{inr(today?.total)}</p>
+          </div>
         </div>
       </div>
 
@@ -169,29 +226,36 @@ function DailyRevenueCard({ data, loading }) {
         <div className="py-10 text-center text-sm text-gray-400">No revenue recorded yet</div>
       ) : (
         <>
-          {/* Stacked bar chart */}
-          <div className="flex items-end gap-1.5 h-44 overflow-x-auto pb-1">
+          {/* 3D stacked bar chart */}
+          <div className="flex items-end gap-1.5 h-52 overflow-x-auto pb-1 px-1">
             {series.map((d, i) => {
               const h = Math.round((d.total / maxTotal) * 100);
               const isToday = i === series.length - 1;
               return (
-                <div key={d.date} className="flex flex-col items-center gap-1 flex-1 min-w-[26px] group">
-                  <span className="text-[9px] font-semibold text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
+                <div key={d.date} className="flex flex-col items-center gap-1.5 flex-1 min-w-[26px] group">
+                  <span className="text-[10px] font-bold text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
                     {d.total >= 1000 ? `${(d.total / 1000).toFixed(1)}k` : d.total}
                   </span>
                   <div
-                    className="w-full flex flex-col-reverse rounded-t-md overflow-hidden bg-gray-100 transition-all"
-                    style={{ height: `${Math.max(h, 2)}%` }}
+                    className="w-full flex flex-col-reverse rounded-t-lg overflow-hidden relative"
+                    style={{ height: `${Math.max(h, 3)}%` }}
                     title={`${d.label}: ${inr(d.total)}\nConsultation ${inr(d.consultation)} · Lab ${inr(d.lab)} · Pharmacy ${inr(d.pharmacy)}`}
                   >
-                    {REV_SOURCES.map(s => {
+                    {isToday && (
+                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 z-10 animate-glow" />
+                    )}
+                    {REV_SOURCES.map((s, si) => {
                       const seg = d.total ? (d[s.key] / d.total) * 100 : 0;
                       return seg > 0 ? (
-                        <div key={s.key} style={{ height: `${seg}%`, background: s.color }} />
+                        <div
+                          key={s.key}
+                          className="bar-3d w-full"
+                          style={{ height: `${seg}%`, background: s.grad, animationDelay: `${i * 35 + si * 60}ms` }}
+                        />
                       ) : null;
                     })}
                   </div>
-                  <span className={`text-[9px] tabular-nums ${isToday ? 'font-bold text-gray-700' : 'text-gray-400'}`}>
+                  <span className={`text-[9px] tabular-nums transition-colors ${isToday ? 'font-bold text-teal-700' : 'text-gray-400 group-hover:text-gray-600'}`}>
                     {d.label.split(' ')[0]}
                   </span>
                 </div>
@@ -200,21 +264,21 @@ function DailyRevenueCard({ data, loading }) {
           </div>
 
           {/* Legend + per-source totals */}
-          <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {REV_SOURCES.map(s => (
-              <div key={s.key} className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
+              <div key={s.key} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 transition-colors">
+                <span className="w-3 h-7 rounded-md flex-shrink-0 shadow-sm" style={{ background: s.grad }} />
                 <div className="min-w-0">
                   <p className="text-[11px] text-gray-500 truncate">{s.label}</p>
-                  <p className="text-sm font-semibold text-gray-800 tabular-nums">{inr(totals[s.key])}</p>
+                  <p className="text-sm font-bold text-gray-800 tabular-nums">{inr(totals[s.key])}</p>
                 </div>
               </div>
             ))}
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-gray-800" />
+            <div className="flex items-center gap-2.5 p-2 rounded-xl" style={{ background: 'linear-gradient(135deg,#f0fdfa,#ecfeff)' }}>
+              <span className="w-3 h-7 rounded-md flex-shrink-0 shadow-sm" style={{ background: 'linear-gradient(180deg,#1f2937,#0d4a4a)' }} />
               <div className="min-w-0">
                 <p className="text-[11px] text-gray-500 truncate">Total ({data?.days || 14}d)</p>
-                <p className="text-sm font-bold text-gray-900 tabular-nums">{inr(totals.total)}</p>
+                <p className="text-sm font-extrabold text-gray-900 tabular-nums">{inr(totals.total)}</p>
               </div>
             </div>
           </div>
@@ -230,6 +294,7 @@ function DailyRevenueCard({ data, loading }) {
 export default function Dashboard() {
   const user = getUser();
   const navigate = useNavigate();
+  const clock = useClock();
   const [activeFilter, setActiveFilter] = useState('all');
   const [sendingReminders, setSendingReminders] = useState(false);
 
@@ -298,7 +363,7 @@ export default function Dashboard() {
   const statCards = [
     {
       icon: FiUsers,
-      iconCls: 'stat-icon-teal',
+      accent: 'accent-teal',
       label: 'Total Patients',
       value: stats?.totalPatients ?? 0,
       badge: stats?.newPatientsThisMonth ? `+${stats.newPatientsThisMonth}%` : null,
@@ -307,7 +372,7 @@ export default function Dashboard() {
     },
     {
       icon: FiCalendar,
-      iconCls: 'stat-icon-cyan',
+      accent: 'accent-cyan',
       label: 'Appointments Today',
       value: stats?.todayAppointments ?? 0,
       badge: 'Today',
@@ -316,7 +381,7 @@ export default function Dashboard() {
     },
     {
       icon: FiCheckCircle,
-      iconCls: 'stat-icon-green',
+      accent: 'accent-green',
       label: 'Completed Visits',
       value: stats?.todayCompleted ?? 0,
       badge: stats?.completionRate ? `${stats.completionRate}%` : null,
@@ -325,7 +390,7 @@ export default function Dashboard() {
     },
     {
       icon: FiClock,
-      iconCls: 'stat-icon-orange',
+      accent: 'accent-orange',
       label: 'Avg Wait Time',
       value: stats?.avgWaitTime ?? 12,
       suffix: 'min',
@@ -338,33 +403,58 @@ export default function Dashboard() {
   return (
     <div className="space-y-5 page-enter">
 
-      {/* ── Top action row ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-lg font-bold text-gray-900">
-            Good {new Date().getHours() < 12 ? 'Morning' : new Date().getHours() < 17 ? 'Afternoon' : 'Evening'},
-            {' '}Dr. {user.name || 'Doctor'} 👋
-          </h1>
-          <p className="text-sm text-gray-500">{formatDate()}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => { refetchStats(); refetchQueue(); toast.success('Refreshed'); }}
-            className="btn-secondary !py-1.5 !text-xs"
-          >
-            <FiRefreshCw size={13} /> Refresh
-          </button>
-          <Link to="/patients" className="btn-primary !py-1.5 !text-xs">
-            <FiUserPlus size={13} /> New Patient
-          </Link>
-          <button
-            onClick={sendReminders}
-            disabled={sendingReminders}
-            className="btn-success !py-1.5 !text-xs"
-          >
-            <FaWhatsapp size={13} />
-            {sendingReminders ? 'Sending…' : 'Send Reminders'}
-          </button>
+      {/* ── Premium 3D Hero ── */}
+      <div className="hero-3d px-6 py-6 sm:px-8 sm:py-7">
+        <div className="hero-grid" />
+        <span className="orb-3d orb-a" />
+        <span className="orb-3d orb-b" />
+        <span className="orb-3d orb-c" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+          {/* Greeting */}
+          <div className="text-white">
+            <div className="inline-flex items-center gap-2 glass-chip px-3 py-1 mb-3">
+              <span className="w-2 h-2 rounded-full bg-emerald-300 live-dot" />
+              <span className="text-[11px] font-medium text-white/90 tracking-wide">Live · System Online</span>
+            </div>
+            <h1 className="text-2xl sm:text-[28px] font-extrabold leading-tight">
+              Good {clock.getHours() < 12 ? 'Morning' : clock.getHours() < 17 ? 'Afternoon' : 'Evening'},{' '}
+              <span className="bg-gradient-to-r from-emerald-200 to-cyan-200 bg-clip-text text-transparent">
+                Dr. {user.name || 'Doctor'}
+              </span> 👋
+            </h1>
+            <p className="text-sm text-white/70 mt-1.5">{formatDate()}</p>
+          </div>
+
+          {/* Live clock + actions */}
+          <div className="flex flex-col items-start lg:items-end gap-3">
+            <div className="glass-chip px-4 py-2 flex items-center gap-3">
+              <FiClock className="text-cyan-200" size={18} />
+              <span className="text-white font-bold text-lg tabular-nums tracking-wider">
+                {clock.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => { refetchStats(); refetchQueue(); toast.success('Refreshed'); }}
+                className="inline-flex items-center gap-1.5 glass-chip px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/20 transition-colors"
+              >
+                <FiRefreshCw size={13} /> Refresh
+              </button>
+              <Link to="/patients" className="inline-flex items-center gap-1.5 bg-white text-teal-800 px-3 py-1.5 rounded-[14px] text-xs font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+                <FiUserPlus size={13} /> New Patient
+              </Link>
+              <button
+                onClick={sendReminders}
+                disabled={sendingReminders}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[14px] text-xs font-bold text-white shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg,#059669,#10b981)' }}
+              >
+                <FaWhatsapp size={13} />
+                {sendingReminders ? 'Sending…' : 'Reminders'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -375,11 +465,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ── Stat Cards ── */}
+      {/* ── 3D Stat Cards ── */}
       {statsLoading ? (
         <Loader skeleton rows={2} />
       ) : (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="scene-3d grid grid-cols-2 lg:grid-cols-4 gap-4">
           {statCards.map(c => <StatCard key={c.label} {...c} />)}
         </div>
       )}
@@ -518,7 +608,7 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="card animate-fade-up stagger-3">
             <h2 className="text-base font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="scene-3d grid grid-cols-2 gap-3">
               <QuickAction
                 icon={FiFileText}
                 label="New Rx"

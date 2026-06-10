@@ -469,3 +469,150 @@ html.a11y-reduce-motion *::after {
   transition-duration: 0.001ms !important;
   scroll-behavior: auto !important;
 }
+
+
+/* ═══════════════════════════════════════════════════════════════
+   PREMIUM 3D DASHBOARD SYSTEM
+═══════════════════════════════════════════════════════════════ */
+
+/* Perspective scene wrapper — gives children real depth */
+.scene-3d { perspective: 1400px; }
+
+/* Mouse-tracking tilt card. JS sets --rx / --ry / --mx / --my */
+.tilt-3d {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateZ(0);
+  transform-style: preserve-3d;
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease;
+  will-change: transform;
+}
+.tilt-3d > * { transform-style: preserve-3d; }
+/* Lift inner content toward the viewer */
+.depth-1 { transform: translateZ(28px); }
+.depth-2 { transform: translateZ(48px); }
+.depth-3 { transform: translateZ(70px); }
+
+/* ─── HERO BANNER ─────────────────────────────────────────────── */
+.hero-3d {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  background:
+    radial-gradient(1200px 400px at 100% -20%, rgba(8,145,178,0.55), transparent 60%),
+    linear-gradient(125deg, #0d4a4a 0%, #1a5c5c 45%, #157878 100%);
+  box-shadow: 0 18px 50px -12px rgba(13,74,74,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+.hero-3d::before {
+  /* subtle moving sheen */
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.10) 48%, transparent 60%);
+  background-size: 250% 250%;
+  animation: heroSheen 7s ease-in-out infinite;
+}
+.hero-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 38px 38px;
+  mask-image: radial-gradient(circle at 70% 30%, #000 0%, transparent 75%);
+}
+
+/* Floating blurred orbs */
+.orb-3d {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(22px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.orb-a { width: 230px; height: 230px; background: radial-gradient(circle, #2dd4bf, transparent 70%); top: -70px; right: 8%; animation: floatY 9s ease-in-out infinite; }
+.orb-b { width: 170px; height: 170px; background: radial-gradient(circle, #22d3ee, transparent 70%); bottom: -60px; right: 26%; animation: floatY 11s ease-in-out infinite reverse; }
+.orb-c { width: 130px; height: 130px; background: radial-gradient(circle, #5eead4, transparent 70%); top: 20%; left: -40px; animation: floatY 8s ease-in-out infinite; }
+
+/* ─── PREMIUM STAT CARD ──────────────────────────────────────── */
+.stat-3d {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid var(--card-border);
+  border-radius: 18px;
+  padding: 1.25rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 10px 30px -12px rgba(0,0,0,0.12);
+}
+/* glowing top accent that follows the card's theme color */
+.stat-3d::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: var(--accent-grad, linear-gradient(90deg,#1a8c8c,#0891b2));
+}
+/* radial glow that follows the cursor */
+.stat-3d::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(280px circle at var(--mx,50%) var(--my,0%), var(--accent-soft, rgba(26,140,140,0.16)), transparent 60%);
+  opacity: 0; transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.stat-3d:hover::after { opacity: 1; }
+.stat-3d:hover { box-shadow: 0 18px 40px -14px var(--accent-shadow, rgba(26,140,140,0.45)); }
+
+.stat-3d-icon {
+  width: 50px; height: 50px; border-radius: 15px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  background: var(--accent-grad, linear-gradient(135deg,#1a8c8c,#0891b2));
+  box-shadow: 0 8px 18px -4px var(--accent-shadow, rgba(26,140,140,0.5));
+}
+
+/* Accent theme variables */
+.accent-teal   { --accent-grad: linear-gradient(135deg,#0d8080,#22b8b8); --accent-shadow: rgba(13,128,128,0.45);  --accent-soft: rgba(13,128,128,0.16); }
+.accent-cyan   { --accent-grad: linear-gradient(135deg,#0369a1,#22d3ee); --accent-shadow: rgba(3,105,161,0.45);   --accent-soft: rgba(3,105,161,0.16); }
+.accent-green  { --accent-grad: linear-gradient(135deg,#047857,#34d399); --accent-shadow: rgba(4,120,87,0.45);    --accent-soft: rgba(4,120,87,0.16); }
+.accent-orange { --accent-grad: linear-gradient(135deg,#b45309,#f59e0b); --accent-shadow: rgba(180,83,9,0.45);    --accent-soft: rgba(180,83,9,0.16); }
+.accent-purple { --accent-grad: linear-gradient(135deg,#6d28d9,#a855f7); --accent-shadow: rgba(109,40,217,0.45);  --accent-soft: rgba(109,40,217,0.16); }
+
+/* ─── 3D CHART BARS ──────────────────────────────────────────── */
+.bar-3d {
+  position: relative;
+  border-radius: 7px 7px 3px 3px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 4px 10px -3px rgba(0,0,0,0.25);
+  transform-origin: bottom;
+  animation: barGrow 0.7s cubic-bezier(0.22,1,0.36,1) both;
+  transition: filter 0.2s ease, transform 0.2s ease;
+}
+.bar-3d:hover { filter: brightness(1.08) saturate(1.1); transform: translateY(-3px) scaleY(1.02); }
+
+/* ─── PILL / GLASS CHIPS used on hero ────────────────────────── */
+.glass-chip {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  border-radius: 14px;
+}
+
+/* ─── KEYFRAMES ──────────────────────────────────────────────── */
+@keyframes floatY    { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-22px); } }
+@keyframes heroSheen { 0% { background-position: 200% 0; } 60%,100% { background-position: -120% 0; } }
+@keyframes barGrow   { from { transform: scaleY(0); opacity: 0; } to { transform: scaleY(1); opacity: 1; } }
+@keyframes popIn     { 0% { opacity: 0; transform: translateY(18px) scale(0.96) rotateX(8deg); } 100% { opacity: 1; transform: translateY(0) scale(1) rotateX(0); } }
+@keyframes glowPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(45,212,191,0.45); } 50% { box-shadow: 0 0 0 8px rgba(45,212,191,0); } }
+@keyframes countUp   { from { transform: translateY(6px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+.animate-pop      { animation: popIn 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+.animate-glow     { animation: glowPulse 2.2s ease-in-out infinite; }
+.live-dot         { animation: glowPulse 2s ease-in-out infinite; }
+
+/* Respect reduced-motion — flatten 3D & disable loops */
+html.a11y-reduce-motion .tilt-3d,
+@media (prefers-reduced-motion: reduce) {
+  .tilt-3d { transform: none !important; }
+  .hero-3d::before, .orb-3d, .bar-3d, .animate-pop, .animate-glow, .live-dot { animation: none !important; }
+}
+
+
+/* Let tilt own the transform on hover (beats .quick-action-btn:hover) */
+.quick-action-btn.tilt-3d:hover {
+  transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  box-shadow: 0 16px 34px -10px rgba(0,0,0,0.18);
+}
