@@ -8,8 +8,7 @@ import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
-import ThreeDCard from '../components/ThreeDCard';
-import AnimatedCounter from '../components/AnimatedCounter';
+import { Hero3D, Stat3D } from '../components/Premium3D';
 
 const PERIODS = [
   { value: 30, label: 'Last 30 Days' },
@@ -111,66 +110,30 @@ export default function PracticeAnalytics() {
   return (
     <div className="page-enter space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center">
-              <FiTrendingUp className="text-white text-lg" />
-            </div>
-            Practice Analytics
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">Your prescribing patterns, no-show rate, and AI-powered insights</p>
-        </div>
-        <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="input-field !py-2 !px-4 text-sm min-w-[150px]">
+      <Hero3D
+        icon={FiTrendingUp}
+        badge="AI-Powered Insights"
+        title="Practice Analytics"
+        subtitle="Your prescribing patterns, no-show rate, and AI-powered insights"
+        gradient="radial-gradient(1200px 400px at 100% -20%, rgba(99,102,241,0.55), transparent 60%), linear-gradient(125deg,#312e81 0%,#4338ca 50%,#0369a1 100%)"
+      >
+        <select value={days} onChange={(e) => setDays(Number(e.target.value))}
+          className="glass-chip text-white text-sm font-semibold px-4 py-2 min-w-[150px] outline-none cursor-pointer [&>option]:text-gray-800">
           {PERIODS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
-      </div>
+      </Hero3D>
 
       {loading ? (
         <Loader label="Crunching your practice data..." />
       ) : (
         <>
           {/* KPI cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <ThreeDCard intensity={10}>
-              <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
-                <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg mb-3">
-                  <FiCalendar className="text-white text-lg" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900"><AnimatedCounter end={totals.appointments || 0} /></p>
-                <p className="text-xs text-gray-500 mt-1">Appointments</p>
-              </div>
-            </ThreeDCard>
-            <ThreeDCard intensity={10}>
-              <div className="p-5 bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-100">
-                <div className="w-11 h-11 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg mb-3">
-                  <FiFileText className="text-white text-lg" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900"><AnimatedCounter end={totals.prescriptions || 0} /></p>
-                <p className="text-xs text-gray-500 mt-1">Prescriptions</p>
-              </div>
-            </ThreeDCard>
-            <ThreeDCard intensity={10}>
-              <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100">
-                <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg mb-3">
-                  <FiCheckCircle className="text-white text-lg" />
-                </div>
-                <p className="text-2xl font-bold text-gray-900"><AnimatedCounter end={m.completionRate || 0} suffix="%" /></p>
-                <p className="text-xs text-gray-500 mt-1">Completion Rate</p>
-              </div>
-            </ThreeDCard>
-            <ThreeDCard intensity={10}>
-              <div className="p-5 bg-gradient-to-br from-orange-50 to-red-50 rounded-2xl border border-orange-100">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg">
-                    <FiAlertCircle className="text-white text-lg" />
-                  </div>
-                  {m.noShowRate > 10 && <span className="badge badge-danger">High</span>}
-                </div>
-                <p className="text-2xl font-bold text-gray-900"><AnimatedCounter end={m.noShowRate || 0} suffix="%" /></p>
-                <p className="text-xs text-gray-500 mt-1">No-Show Rate</p>
-              </div>
-            </ThreeDCard>
+          <div className="scene-3d grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat3D icon={FiCalendar}    accent="accent-cyan"   label="Appointments"    value={totals.appointments || 0} delay="0ms" />
+            <Stat3D icon={FiFileText}    accent="accent-purple" label="Prescriptions"   value={totals.prescriptions || 0} delay="80ms" />
+            <Stat3D icon={FiCheckCircle} accent="accent-green"  label="Completion Rate" value={m.completionRate || 0} suffix="%" delay="160ms" />
+            <Stat3D icon={FiAlertCircle} accent="accent-orange" label="No-Show Rate"    value={m.noShowRate || 0} suffix="%"
+              badge={m.noShowRate > 10 ? 'High' : null} badgeCls="bg-red-100 text-red-700" delay="240ms" />
           </div>
 
           {/* Top diagnoses + medicines */}

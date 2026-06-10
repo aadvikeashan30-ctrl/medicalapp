@@ -4,7 +4,8 @@ import {
   FiUsers, FiCalendar, FiClock, FiCheckCircle,
   FiAlertCircle, FiUserPlus, FiActivity, FiDollarSign,
   FiRefreshCw, FiArrowUpRight, FiPlay, FiCheck,
-  FiFileText, FiMonitor, FiFilter, FiTrendingUp
+  FiFileText, FiMonitor, FiFilter, FiTrendingUp, FiPackage,
+  FiArrowUp, FiArrowDown
 } from 'react-icons/fi';
 import { FaWhatsapp, FaFlask, FaRupeeSign, FaVideo } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -177,46 +178,152 @@ function UpcomingRow({ time, name, sub, idx }) {
 
 /* ─── Daily Revenue (day-wise, multi-source) ───────────────────── */
 const REV_SOURCES = [
-  { key: 'consultation', label: 'Consultation',           color: '#1a8c8c', grad: 'linear-gradient(180deg,#2aa0a0,#0d8080)' },
-  { key: 'lab',          label: 'Lab',                     color: '#0369a1', grad: 'linear-gradient(180deg,#22d3ee,#0369a1)' },
-  { key: 'pharmacy',     label: 'Pharmacy / Medicines',    color: '#b45309', grad: 'linear-gradient(180deg,#f59e0b,#b45309)' },
+  { key: 'consultation', label: 'Consultation',        icon: FiActivity, color: '#0d8080', grad: 'linear-gradient(135deg,#2aa0a0,#0d8080)', soft: 'rgba(13,128,128,0.10)' },
+  { key: 'lab',          label: 'Lab',                 icon: FaFlask,    color: '#0369a1', grad: 'linear-gradient(135deg,#22d3ee,#0369a1)', soft: 'rgba(3,105,161,0.10)' },
+  { key: 'pharmacy',     label: 'Pharmacy / Meds',     icon: FiPackage,  color: '#b45309', grad: 'linear-gradient(135deg,#f59e0b,#b45309)', soft: 'rgba(180,83,9,0.10)' },
 ];
 const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+const kfmt = (n) => (n >= 100000 ? `₹${(n / 100000).toFixed(2)}L` : n >= 1000 ? `₹${(n / 1000).toFixed(1)}k` : `₹${n}`);
 
-function DailyRevenueCard({ data, loading }) {
+/* Build a smooth (Catmull-Rom → bezier) SVG path through points */
+function smoothPath(pts) {
+  if (pts.length < 2) return pts.length ? `M ${pts[0][0]} ${pts[0][1]}` : '';
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i - 1] || pts[i];
+    const p1 = pts[i];
+    const p2 = pts[i + 1];
+    const p3 = pts[i + 2] || p2;
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
+    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
+    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2[0]} ${p2[1]}`;
+  }
+  return d;
+}
+
+function RevSparkline({ series }) {
+  const [hover, setHover] = useState(null);
+  const W = 760, H = 200, padX = 12, padTop = 24, padBot = 28;
+  const max = Math.max(...series.map(s => s.total), 1);
+  const stepX = series.length > 1 ? (W - padX * 2) / (series.length - 1) : 0;
+  const yFor = (v) => padTop + (1 - v / max) * (H - padTop - padBot);
+  const pts = series.map((s, i) => [padX + i * stepX, yFor(s.total)]);
+  const line = smoothPath(pts);
+  const area = pts.length ? `${line} L ${pts[pts.length - 1][0]} ${H - padBot} L ${pts[0][0]} ${H - padBot} Z` : '';
+  const gridY = [0.25, 0.5, 0.75, 1].map(f => padTop + f * (H - padTop - padBot));
+  const active = hover != null ? series[hover] : null;
+
+  return (
+    <div className="relative">
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" className="w-full" style={{ height: 200 }}>
+        <defs>
+          <linearGradient id="revArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1a8c8c" stopOpacity="0.40" />
+            <stop offset="60%" stopColor="#1a8c8c" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#1a8c8c" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="revLine" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#0d4a4a" />
+            <stop offset="55%" stopColor="#1a8c8c" />
+            <stop offset="100%" stopColor="#22d3ee" />
+          </linearGradient>
+          <filter id="revGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+        </defs>
+
+        {/* grid */}
+        {gridY.map((y, i) => (
+          <line key={i} x1={padX} y1={y} x2={W - padX} y2={y} stroke="#000" strokeOpacity="0.05" strokeDasharray="3 5" />
+        ))}
+
+        {area && <path d={area} fill="url(#revArea)" className="spark-area" />}
+        {line && <path d={line} fill="none" stroke="url(#revLine)" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" filter="url(#revGlow)" className="spark-line" />}
+
+        {/* hover guide */}
+        {active && (
+          <line x1={pts[hover][0]} y1={padTop - 6} x2={pts[hover][0]} y2={H - padBot} stroke="#0d4a4a" strokeOpacity="0.25" strokeWidth="1.5" />
+        )}
+
+        {/* points */}
+        {pts.map((p, i) => {
+          const isLast = i === pts.length - 1;
+          const isHover = hover === i;
+          return (
+            <g key={i}>
+              {(isLast || isHover) && <circle cx={p[0]} cy={p[1]} r="7" fill="#1a8c8c" opacity="0.18" className={isLast ? 'animate-glow' : ''} />}
+              <circle cx={p[0]} cy={p[1]} r={isHover ? 5 : isLast ? 4.5 : 3} fill="#fff" stroke="#1a8c8c" strokeWidth="2.5" className="spark-dot" style={{ animationDelay: `${i * 45}ms` }} />
+              {/* wide invisible hit area */}
+              <rect x={p[0] - stepX / 2} y={0} width={Math.max(stepX, 16)} height={H} fill="transparent"
+                    onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} style={{ cursor: 'pointer' }} />
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* x-axis labels */}
+      <div className="flex justify-between px-1 -mt-1">
+        {series.map((s, i) => (
+          <span key={i} className={`text-[9px] tabular-nums ${i === series.length - 1 ? 'font-bold text-teal-700' : 'text-gray-400'} ${series.length > 16 && i % 2 ? 'opacity-0' : ''}`}>
+            {s.label.split(' ')[0]}
+          </span>
+        ))}
+      </div>
+
+      {/* floating tooltip */}
+      {active && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 px-3 py-2 rounded-xl text-white text-xs shadow-xl pointer-events-none z-10"
+             style={{ background: 'linear-gradient(135deg,#0d4a4a,#157878)' }}>
+          <span className="font-bold">{active.label}</span> · <span className="font-extrabold tabular-nums">{inr(active.total)}</span>
+          <div className="text-[10px] text-white/80 mt-0.5 tabular-nums">
+            C {kfmt(active.consultation)} · L {kfmt(active.lab)} · P {kfmt(active.pharmacy)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DailyRevenueCard({ data, loading, range, onRange }) {
   const series = data?.series || [];
   const totals = data?.totals || { consultation: 0, lab: 0, pharmacy: 0, total: 0 };
   const today = data?.today;
-  const maxTotal = Math.max(...series.map(s => s.total), 1);
   const avg = series.length ? Math.round(totals.total / series.length) : 0;
+  const yesterday = series.length > 1 ? series[series.length - 2].total : 0;
+  const todayTotal = today?.total || 0;
+  const delta = yesterday ? Math.round(((todayTotal - yesterday) / yesterday) * 100) : 0;
+  const up = delta >= 0;
 
   return (
     <div className="card animate-pop stagger-4 relative overflow-hidden">
-      {/* soft corner glow */}
-      <div className="pointer-events-none absolute -top-16 -right-16 w-52 h-52 rounded-full"
-           style={{ background: 'radial-gradient(circle, rgba(13,128,128,0.10), transparent 70%)' }} />
+      <div className="pointer-events-none absolute -top-20 -right-20 w-60 h-60 rounded-full"
+           style={{ background: 'radial-gradient(circle, rgba(13,128,128,0.12), transparent 70%)' }} />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 w-56 h-56 rounded-full"
+           style={{ background: 'radial-gradient(circle, rgba(34,211,238,0.10), transparent 70%)' }} />
 
+      {/* Header */}
       <div className="flex items-center justify-between mb-5 flex-wrap gap-3 relative">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-lg"
-               style={{ background: 'linear-gradient(135deg,#0d4a4a,#1a8c8c)', boxShadow: '0 8px 20px -6px rgba(26,140,140,0.6)' }}>
-            <FiTrendingUp size={20} />
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg"
+               style={{ background: 'linear-gradient(135deg,#0d4a4a,#1a8c8c)', boxShadow: '0 10px 22px -6px rgba(26,140,140,0.6)' }}>
+            <FiTrendingUp size={22} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-gray-900">Daily Revenue</h2>
-            <p className="text-xs text-gray-400">Last {data?.days || 14} days · consultation + lab + pharmacy</p>
+            <h2 className="text-lg font-extrabold text-gray-900 leading-tight">Revenue Analytics</h2>
+            <p className="text-xs text-gray-400">Consultation · Lab · Pharmacy — day-wise</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="text-right px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100">
-            <p className="text-[10px] text-gray-400 uppercase tracking-wide">Avg / day</p>
-            <p className="text-sm font-bold text-gray-700 tabular-nums">{inr(avg)}</p>
-          </div>
-          <div className="text-right px-4 py-2 rounded-2xl text-white shadow-md"
-               style={{ background: 'linear-gradient(135deg,#0d4a4a,#157878)' }}>
-            <p className="text-[10px] text-white/70 uppercase tracking-wide">Today</p>
-            <p className="text-base font-extrabold tabular-nums">{inr(today?.total)}</p>
-          </div>
+        {/* Range toggle */}
+        <div className="flex items-center gap-1 p-1 rounded-xl bg-gray-100">
+          {[7, 14, 30].map(d => (
+            <button key={d} onClick={() => onRange(d)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${range === d ? 'bg-white text-teal-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+              {d}D
+            </button>
+          ))}
         </div>
       </div>
 
@@ -226,61 +333,56 @@ function DailyRevenueCard({ data, loading }) {
         <div className="py-10 text-center text-sm text-gray-400">No revenue recorded yet</div>
       ) : (
         <>
-          {/* 3D stacked bar chart */}
-          <div className="flex items-end gap-1.5 h-52 overflow-x-auto pb-1 px-1">
-            {series.map((d, i) => {
-              const h = Math.round((d.total / maxTotal) * 100);
-              const isToday = i === series.length - 1;
+          {/* Headline KPIs */}
+          <div className="grid grid-cols-3 gap-3 mb-5 relative">
+            <div className="kpi-3d" style={{ '--kpi-soft': 'rgba(13,128,128,0.07)' }}>
+              <p className="text-[11px] text-gray-400 uppercase tracking-wide">Today</p>
+              <p className="text-xl font-extrabold text-gray-900 tabular-nums leading-tight">{inr(todayTotal)}</p>
+              <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold mt-1 px-1.5 py-0.5 rounded-md ${up ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>
+                {up ? <FiArrowUp size={11} /> : <FiArrowDown size={11} />} {Math.abs(delta)}% vs yesterday
+              </span>
+            </div>
+            <div className="kpi-3d" style={{ '--kpi-soft': 'rgba(3,105,161,0.07)' }}>
+              <p className="text-[11px] text-gray-400 uppercase tracking-wide">Avg / day</p>
+              <p className="text-xl font-extrabold text-gray-900 tabular-nums leading-tight">{inr(avg)}</p>
+              <span className="text-[11px] text-gray-400 mt-1 inline-block">over {range} days</span>
+            </div>
+            <div className="kpi-3d text-white" style={{ background: 'linear-gradient(135deg,#0d4a4a,#157878)', border: 'none' }}>
+              <p className="text-[11px] text-white/70 uppercase tracking-wide">Total ({range}D)</p>
+              <p className="text-xl font-extrabold tabular-nums leading-tight">{inr(totals.total)}</p>
+              <span className="text-[11px] text-white/70 mt-1 inline-block">all sources</span>
+            </div>
+          </div>
+
+          {/* Smooth area chart */}
+          <div className="relative -mx-1">
+            <RevSparkline series={series} />
+          </div>
+
+          {/* Source breakdown with animated share bars */}
+          <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {REV_SOURCES.map((s, i) => {
+              const val = totals[s.key];
+              const pct = totals.total ? Math.round((val / totals.total) * 100) : 0;
+              const Ic = s.icon;
               return (
-                <div key={d.date} className="flex flex-col items-center gap-1.5 flex-1 min-w-[26px] group">
-                  <span className="text-[10px] font-bold text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
-                    {d.total >= 1000 ? `${(d.total / 1000).toFixed(1)}k` : d.total}
-                  </span>
-                  <div
-                    className="w-full flex flex-col-reverse rounded-t-lg overflow-hidden relative"
-                    style={{ height: `${Math.max(h, 3)}%` }}
-                    title={`${d.label}: ${inr(d.total)}\nConsultation ${inr(d.consultation)} · Lab ${inr(d.lab)} · Pharmacy ${inr(d.pharmacy)}`}
-                  >
-                    {isToday && (
-                      <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 z-10 animate-glow" />
-                    )}
-                    {REV_SOURCES.map((s, si) => {
-                      const seg = d.total ? (d[s.key] / d.total) * 100 : 0;
-                      return seg > 0 ? (
-                        <div
-                          key={s.key}
-                          className="bar-3d w-full"
-                          style={{ height: `${seg}%`, background: s.grad, animationDelay: `${i * 35 + si * 60}ms` }}
-                        />
-                      ) : null;
-                    })}
+                <div key={s.key} className="kpi-3d" style={{ '--kpi-soft': s.soft, animationDelay: `${i * 80}ms` }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-xl flex items-center justify-center text-white shadow-sm" style={{ background: s.grad }}>
+                        <Ic size={15} />
+                      </span>
+                      <span className="text-xs font-semibold text-gray-600">{s.label}</span>
+                    </div>
+                    <span className="text-[11px] font-bold tabular-nums" style={{ color: s.color }}>{pct}%</span>
                   </div>
-                  <span className={`text-[9px] tabular-nums transition-colors ${isToday ? 'font-bold text-teal-700' : 'text-gray-400 group-hover:text-gray-600'}`}>
-                    {d.label.split(' ')[0]}
-                  </span>
+                  <p className="text-lg font-extrabold text-gray-900 tabular-nums leading-none mb-2">{inr(val)}</p>
+                  <div className="share-track">
+                    <div className="share-fill" style={{ width: `${pct}%`, background: s.grad, animationDelay: `${i * 120 + 200}ms` }} />
+                  </div>
                 </div>
               );
             })}
-          </div>
-
-          {/* Legend + per-source totals */}
-          <div className="mt-5 pt-4 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {REV_SOURCES.map(s => (
-              <div key={s.key} className="flex items-center gap-2.5 p-2 rounded-xl hover:bg-gray-50 transition-colors">
-                <span className="w-3 h-7 rounded-md flex-shrink-0 shadow-sm" style={{ background: s.grad }} />
-                <div className="min-w-0">
-                  <p className="text-[11px] text-gray-500 truncate">{s.label}</p>
-                  <p className="text-sm font-bold text-gray-800 tabular-nums">{inr(totals[s.key])}</p>
-                </div>
-              </div>
-            ))}
-            <div className="flex items-center gap-2.5 p-2 rounded-xl" style={{ background: 'linear-gradient(135deg,#f0fdfa,#ecfeff)' }}>
-              <span className="w-3 h-7 rounded-md flex-shrink-0 shadow-sm" style={{ background: 'linear-gradient(180deg,#1f2937,#0d4a4a)' }} />
-              <div className="min-w-0">
-                <p className="text-[11px] text-gray-500 truncate">Total ({data?.days || 14}d)</p>
-                <p className="text-sm font-extrabold text-gray-900 tabular-nums">{inr(totals.total)}</p>
-              </div>
-            </div>
           </div>
         </>
       )}
@@ -312,7 +414,8 @@ export default function Dashboard() {
   }, [refreshTrigger, refetchQueue, refetchStats]);
   const { data: analytics } = useApi('/dashboard/analytics');
   const { data: revenue }   = useApi('/billing/revenue/summary');
-  const { data: dailyRevenue, loading: dailyRevenueLoading } = useApi('/dashboard/revenue-daily?days=14');
+  const [revDays, setRevDays] = useState(14);
+  const { data: dailyRevenue, loading: dailyRevenueLoading } = useApi(`/dashboard/revenue-daily?days=${revDays}`, { deps: [revDays] });
 
   /* Upcoming appointments (next few from queue) */
   const upcoming = useMemo(() => {
@@ -475,7 +578,7 @@ export default function Dashboard() {
       )}
 
       {/* ── Daily Revenue (day-wise: consultation + lab + pharmacy) ── */}
-      <DailyRevenueCard data={dailyRevenue} loading={dailyRevenueLoading} />
+      <DailyRevenueCard data={dailyRevenue} loading={dailyRevenueLoading} range={revDays} onRange={setRevDays} />
 
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

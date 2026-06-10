@@ -604,7 +604,7 @@ html.a11y-reduce-motion *::after {
 .live-dot         { animation: glowPulse 2s ease-in-out infinite; }
 
 /* Respect reduced-motion — flatten 3D & disable loops */
-html.a11y-reduce-motion .tilt-3d,
+html.a11y-reduce-motion .tilt-3d { transform: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .tilt-3d { transform: none !important; }
   .hero-3d::before, .orb-3d, .bar-3d, .animate-pop, .animate-glow, .live-dot { animation: none !important; }
@@ -615,4 +615,38 @@ html.a11y-reduce-motion .tilt-3d,
 .quick-action-btn.tilt-3d:hover {
   transform: perspective(900px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   box-shadow: 0 16px 34px -10px rgba(0,0,0,0.18);
+}
+
+
+/* ─── REVENUE AREA CHART + KPI TILES ─────────────────────────── */
+@keyframes drawLine { from { stroke-dashoffset: 1400; } to { stroke-dashoffset: 0; } }
+@keyframes areaRise { from { opacity: 0; transform: scaleY(0.55); } to { opacity: 1; transform: scaleY(1); } }
+@keyframes growX    { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes dotPop   { 0% { transform: scale(0); opacity: 0; } 70% { transform: scale(1.4); } 100% { transform: scale(1); opacity: 1; } }
+
+.spark-line { stroke-dasharray: 1400; animation: drawLine 1.5s cubic-bezier(0.22,1,0.36,1) forwards; }
+.spark-area { transform-origin: bottom; animation: areaRise 1.1s ease-out both; }
+.spark-dot  { animation: dotPop 0.4s ease-out both; }
+
+.share-track { height: 7px; border-radius: 9999px; background: rgba(0,0,0,0.06); overflow: hidden; }
+.share-fill  { height: 100%; border-radius: 9999px; transform-origin: left; animation: growX 1.1s cubic-bezier(0.22,1,0.36,1) both; }
+
+/* KPI tile (3D, glass, gradient top) */
+.kpi-3d {
+  position: relative; overflow: hidden;
+  border-radius: 16px; padding: 0.9rem 1rem;
+  background: #fff; border: 1px solid var(--card-border);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 10px 26px -16px rgba(0,0,0,0.22);
+}
+.kpi-3d::before {
+  content: ''; position: absolute; inset: 0;
+  background: var(--kpi-soft, rgba(26,140,140,0.08));
+  opacity: 0; transition: opacity 0.3s ease;
+}
+.kpi-3d:hover::before { opacity: 1; }
+.kpi-3d > * { position: relative; }
+
+html.a11y-reduce-motion .spark-line { animation: none !important; stroke-dashoffset: 0 !important; }
+@media (prefers-reduced-motion: reduce) {
+  .spark-line, .spark-area, .spark-dot, .share-fill { animation: none !important; stroke-dashoffset: 0 !important; }
 }

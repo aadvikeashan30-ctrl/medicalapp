@@ -8,6 +8,7 @@ import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
+import { Hero3D, Stat3D } from '../components/Premium3D';
 
 const formatINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -119,40 +120,27 @@ export default function PharmacyInventory() {
 
   return (
     <div className="page-enter space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-              <FiPackage className="text-white text-lg" />
-            </div>
-            Smart Pharmacy
-          </h1>
-          <p className="text-sm text-gray-500 mt-1 ml-[52px]">Real-time stock, multi-batch inventory, expiry & reorder intelligence</p>
-        </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+      {/* Hero */}
+      <Hero3D
+        icon={FiPackage}
+        badge="Smart Pharmacy · Live Stock"
+        title="Smart Pharmacy"
+        subtitle="Real-time stock, multi-batch inventory, expiry & reorder intelligence"
+        gradient="radial-gradient(1200px 400px at 100% -20%, rgba(16,185,129,0.5), transparent 60%), linear-gradient(125deg,#065f46 0%,#0d8080 45%,#0891b2 100%)"
+      >
+        <button onClick={openAdd} className="inline-flex items-center gap-2 bg-white text-emerald-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
           <FiPlus /> Add Medicine
         </button>
-      </div>
+      </Hero3D>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-        {[
-          { label: 'Total Items', value: stats?.totalItems ?? 0, icon: FiLayers, cls: 'from-blue-500 to-indigo-600' },
-          { label: 'Stock Value', value: formatINR(stats?.stockValue), icon: FiDollarSign, cls: 'from-emerald-500 to-teal-600' },
-          { label: 'Out of Stock', value: stats?.outOfStock ?? 0, icon: FiAlertTriangle, cls: 'from-gray-500 to-slate-600' },
-          { label: 'Low Stock', value: stats?.lowStock ?? 0, icon: FiShoppingCart, cls: 'from-orange-500 to-amber-600' },
-          { label: 'Near Expiry', value: stats?.nearExpiry ?? 0, icon: FiClock, cls: 'from-amber-500 to-yellow-600' },
-          { label: 'Expired', value: stats?.expired ?? 0, icon: FiX, cls: 'from-red-500 to-rose-600' }
-        ].map((s) => (
-          <div key={s.label} className="card !p-4">
-            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${s.cls} flex items-center justify-center mb-2`}>
-              <s.icon className="text-white text-sm" />
-            </div>
-            <p className="text-xl font-bold text-gray-900">{s.value}</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
+      <div className="scene-3d grid grid-cols-2 lg:grid-cols-6 gap-3">
+        <Stat3D icon={FiLayers}        accent="accent-cyan"   label="Total Items"  value={stats?.totalItems ?? 0} delay="0ms" />
+        <Stat3D icon={FiDollarSign}    accent="accent-green"  label="Stock Value"  value={stats?.stockValue ?? 0} prefix="₹" delay="60ms" />
+        <Stat3D icon={FiAlertTriangle} accent="accent-purple" label="Out of Stock" value={stats?.outOfStock ?? 0} delay="120ms" />
+        <Stat3D icon={FiShoppingCart}  accent="accent-orange" label="Low Stock"    value={stats?.lowStock ?? 0} delay="180ms" />
+        <Stat3D icon={FiClock}         accent="accent-orange" label="Near Expiry"  value={stats?.nearExpiry ?? 0} delay="240ms" />
+        <Stat3D icon={FiX}             accent="accent-teal"   label="Expired"      value={stats?.expired ?? 0} delay="300ms" />
       </div>
 
       {/* Revenue + purchase suggestions */}

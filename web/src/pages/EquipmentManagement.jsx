@@ -8,6 +8,7 @@ import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
+import { Hero3D, Stat3D } from '../components/Premium3D';
 
 const formatINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -126,38 +127,27 @@ export default function EquipmentManagement() {
 
   return (
     <div className="page-enter space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-600 to-gray-800 flex items-center justify-center">
-              <FiTool className="text-white text-lg" />
-            </div>
-            Equipment Management
-          </h1>
-          <p className="text-sm text-gray-500 mt-1 ml-[52px]">Asset registry, maintenance, service scheduling & AMC tracking</p>
-        </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2"><FiPlus /> Add Equipment</button>
-      </div>
+      {/* Hero */}
+      <Hero3D
+        icon={FiTool}
+        badge="Asset Registry · AMC Tracking"
+        title="Equipment Management"
+        subtitle="Asset registry, maintenance, service scheduling & AMC tracking"
+        gradient="radial-gradient(1200px 400px at 100% -20%, rgba(100,116,139,0.55), transparent 60%), linear-gradient(125deg,#1e293b 0%,#334155 50%,#0f766e 100%)"
+      >
+        <button onClick={openAdd} className="inline-flex items-center gap-2 bg-white text-slate-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+          <FiPlus /> Add Equipment
+        </button>
+      </Hero3D>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
-        {[
-          { label: 'Total Assets', value: stats?.total ?? 0, icon: FiClipboard, cls: 'from-blue-500 to-indigo-600' },
-          { label: 'Operational', value: stats?.operational ?? 0, icon: FiCheckCircle, cls: 'from-emerald-500 to-teal-600' },
-          { label: 'In Maintenance', value: stats?.maintenance ?? 0, icon: FiActivity, cls: 'from-amber-500 to-yellow-600' },
-          { label: 'Service Due', value: stats?.serviceDue ?? 0, icon: FiCalendar, cls: 'from-orange-500 to-amber-600' },
-          { label: 'AMC Expiring', value: stats?.amcExpiring ?? 0, icon: FiShield, cls: 'from-red-500 to-rose-600' },
-          { label: 'Asset Value', value: formatINR(stats?.assetValue), icon: FiTool, cls: 'from-purple-500 to-pink-600' }
-        ].map((s) => (
-          <div key={s.label} className="card !p-4">
-            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${s.cls} flex items-center justify-center mb-2`}>
-              <s.icon className="text-white text-sm" />
-            </div>
-            <p className="text-xl font-bold text-gray-900">{s.value}</p>
-            <p className="text-[11px] text-gray-500 mt-0.5">{s.label}</p>
-          </div>
-        ))}
+      <div className="scene-3d grid grid-cols-2 lg:grid-cols-6 gap-3">
+        <Stat3D icon={FiClipboard}   accent="accent-cyan"   label="Total Assets"   value={stats?.total ?? 0} delay="0ms" />
+        <Stat3D icon={FiCheckCircle} accent="accent-green"  label="Operational"    value={stats?.operational ?? 0} delay="60ms" />
+        <Stat3D icon={FiActivity}    accent="accent-orange" label="In Maintenance" value={stats?.maintenance ?? 0} delay="120ms" />
+        <Stat3D icon={FiCalendar}    accent="accent-orange" label="Service Due"    value={stats?.serviceDue ?? 0} delay="180ms" />
+        <Stat3D icon={FiShield}      accent="accent-purple" label="AMC Expiring"   value={stats?.amcExpiring ?? 0} delay="240ms" />
+        <Stat3D icon={FiTool}        accent="accent-teal"   label="Asset Value"    value={stats?.assetValue ?? 0} prefix="₹" delay="300ms" />
       </div>
 
       {/* Alerts banner */}
