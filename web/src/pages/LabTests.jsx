@@ -9,19 +9,36 @@ import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
-import ThreeDCard from '../components/ThreeDCard';
 import PatientSearchSelect from '../components/PatientSearchSelect';
+import AnimatedCounter from '../components/AnimatedCounter';
+import { Hero3D, useTilt } from '../components/Premium3D';
 
 
 const STATUS_OPTIONS = ['ordered', 'sample-collected', 'reported', 'cancelled'];
 const CATEGORY_OPTIONS = ['Hematology', 'Biochemistry', 'Microbiology', 'Imaging', 'Pathology', 'Cardiology', 'Other'];
 
 const statusConfig = {
-  ordered: { label: 'Ordered', class: 'badge-blue', icon: FiClock },
-  'sample-collected': { label: 'Sample Collected', class: 'badge-amber', icon: FiActivity },
-  reported: { label: 'Reported', class: 'badge-green', icon: FiCheckCircle },
-  cancelled: { label: 'Cancelled', class: 'badge-red', icon: FiX }
+  ordered: { label: 'Ordered', class: 'badge-blue', icon: FiClock, dot: '#3b82f6', soft: 'rgba(59,130,246,0.14)', shadow: 'rgba(59,130,246,0.4)' },
+  'sample-collected': { label: 'Sample Collected', class: 'badge-amber', icon: FiActivity, dot: '#f59e0b', soft: 'rgba(245,158,11,0.14)', shadow: 'rgba(245,158,11,0.4)' },
+  reported: { label: 'Reported', class: 'badge-green', icon: FiCheckCircle, dot: '#10b981', soft: 'rgba(16,185,129,0.14)', shadow: 'rgba(16,185,129,0.4)' },
+  cancelled: { label: 'Cancelled', class: 'badge-red', icon: FiX, dot: '#ef4444', soft: 'rgba(239,68,68,0.14)', shadow: 'rgba(239,68,68,0.4)' }
 };
+
+/* Shared 3D helpers */
+function KpiTile({ icon: Icon, accent, label, value, delay }) {
+  const tilt = useTilt(10);
+  return (
+    <div {...tilt} className={`stat-3d tilt-3d ${accent} animate-pop`} style={{ animationDelay: delay }}>
+      <div className="flex items-start justify-between mb-3 depth-2"><div className="stat-3d-icon"><Icon size={22} /></div></div>
+      <p className="text-[26px] font-extrabold text-gray-900 tabular-nums leading-none depth-1"><AnimatedCounter end={Number(value || 0)} /></p>
+      <p className="text-sm text-gray-500 mt-1.5 depth-1">{label}</p>
+    </div>
+  );
+}
+function TiltCard({ className = '', style, children }) {
+  const tilt = useTilt(6);
+  return <div {...tilt} className={`tilt-3d ${className}`} style={style}>{children}</div>;
+}
 
 export default function LabTests() {
   const [search, setSearch] = useState('');
@@ -133,69 +150,31 @@ export default function LabTests() {
   const stats = {
     total,
     ordered: tests.filter(t => t.status === 'ordered').length,
+    sampleCollected: tests.filter(t => t.status === 'sample-collected').length,
     reported: tests.filter(t => t.status === 'reported').length
   };
 
   return (
     <div className="page-enter space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center glow-pink">
-              <FiActivity className="text-white text-lg" />
-            </div>
-            Lab Tests
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">Order, track, and manage patient lab investigations</p>
-        </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+      {/* Hero */}
+      <Hero3D
+        icon={FiActivity}
+        badge="Lab & Diagnostics · Live"
+        title="Lab Tests"
+        subtitle="Order, track and report patient investigations"
+        gradient="radial-gradient(1200px 420px at 100% -20%, rgba(244,63,94,0.5), transparent 60%), linear-gradient(125deg,#9f1239 0%,#be185d 50%,#7c3aed 100%)"
+      >
+        <button onClick={openAdd} className="inline-flex items-center gap-2 bg-white text-rose-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
           <FiPlus /> Order Test
         </button>
-      </div>
-
+      </Hero3D>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <ThreeDCard intensity={8}>
-          <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FiActivity className="text-white text-lg" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                <p className="text-xs text-gray-500">Total Tests</p>
-              </div>
-            </div>
-          </div>
-        </ThreeDCard>
-        <ThreeDCard intensity={8}>
-          <div className="p-5 bg-gradient-to-br from-orange-50 to-amber-50 rounded-2xl border border-orange-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FiClock className="text-white text-lg" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.ordered}</p>
-                <p className="text-xs text-gray-500">Pending</p>
-              </div>
-            </div>
-          </div>
-        </ThreeDCard>
-        <ThreeDCard intensity={8}>
-          <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FiCheckCircle className="text-white text-lg" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.reported}</p>
-                <p className="text-xs text-gray-500">Completed</p>
-              </div>
-            </div>
-          </div>
-        </ThreeDCard>
+      <div className="scene-3d grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiTile icon={FiActivity}    accent="accent-cyan"   label="Total Tests"      value={stats.total} delay="0ms" />
+        <KpiTile icon={FiClock}       accent="accent-orange" label="Pending"          value={stats.ordered} delay="70ms" />
+        <KpiTile icon={FiFileText}    accent="accent-purple" label="Sample Collected" value={stats.sampleCollected} delay="140ms" />
+        <KpiTile icon={FiCheckCircle} accent="accent-green"  label="Reported"         value={stats.reported} delay="210ms" />
       </div>
 
 
@@ -238,19 +217,20 @@ export default function LabTests() {
           action={<button onClick={openAdd} className="btn-primary text-sm">Order First Test</button>}
         />
       ) : (
-        <div className="space-y-3">
+        <div className="scene-3d space-y-3">
           {filteredTests.map((test, idx) => {
             const sc = statusConfig[test.status] || statusConfig.ordered;
             const StatusIcon = sc.icon;
             return (
-              <div
+              <TiltCard
                 key={test._id}
-                className="card flex flex-col sm:flex-row sm:items-center justify-between gap-4 group animate-slide-in"
-                style={{ animationDelay: `${idx * 30}ms` }}
+                className="module-3d flex flex-col sm:flex-row sm:items-center justify-between gap-4 group p-4 animate-pop"
+                style={{ '--m-soft': sc.soft, '--m-shadow': sc.shadow, animationDelay: `${Math.min(idx * 35, 320)}ms`, borderLeft: `4px solid ${sc.dot}` }}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                    <FiFileText className="text-indigo-600 text-lg" />
+                <div className="flex items-center gap-4 depth-1">
+                  <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-md flex-shrink-0"
+                       style={{ background: 'linear-gradient(135deg,#be185d,#7c3aed)', boxShadow: '0 8px 16px -5px rgba(190,24,93,0.5)' }}>
+                    <FiFileText className="text-lg" />
                   </div>
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">{test.name}</h3>
@@ -272,7 +252,7 @@ export default function LabTests() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 depth-1">
                   <span className={`badge ${sc.class} flex items-center gap-1`}>
                     <StatusIcon className="text-xs" /> {sc.label}
                   </span>
@@ -303,7 +283,7 @@ export default function LabTests() {
                     <FiTrash2 className="text-sm" />
                   </button>
                 </div>
-              </div>
+              </TiltCard>
             );
           })}
         </div>

@@ -9,7 +9,8 @@ import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
 import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
-import ThreeDCard from '../components/ThreeDCard';
+import AnimatedCounter from '../components/AnimatedCounter';
+import { Hero3D, useTilt } from '../components/Premium3D';
 
 const FORM_OPTIONS = ['tablet', 'capsule', 'syrup', 'injection', 'ointment', 'drops', 'inhaler', 'powder'];
 const TIMING_OPTIONS = [
@@ -37,6 +38,79 @@ const formColors = {
   inhaler: 'from-indigo-500 to-violet-600',
   powder: 'from-gray-500 to-slate-600'
 };
+
+const FORM_HEX = {
+  tablet: '#4f46e5', capsule: '#a855f7', syrup: '#f59e0b', injection: '#ef4444',
+  ointment: '#10b981', drops: '#0ea5e9', inhaler: '#6366f1', powder: '#64748b'
+};
+const hexA = (hex, a) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+};
+
+function KpiTile({ icon: Icon, accent, label, value, text, delay }) {
+  const tilt = useTilt(10);
+  return (
+    <div {...tilt} className={`stat-3d tilt-3d ${accent} animate-pop`} style={{ animationDelay: delay }}>
+      <div className="flex items-start justify-between mb-3 depth-2"><div className="stat-3d-icon"><Icon size={22} /></div></div>
+      {text != null
+        ? <p className="text-lg font-extrabold text-gray-900 truncate leading-tight depth-1">{text}</p>
+        : <p className="text-[26px] font-extrabold text-gray-900 tabular-nums leading-none depth-1"><AnimatedCounter end={Number(value || 0)} /></p>}
+      <p className="text-sm text-gray-500 mt-1.5 depth-1">{label}</p>
+    </div>
+  );
+}
+
+/* 3D tilt medicine card */
+function MedicineCard({ med, idx, onEdit, onDelete }) {
+  const tilt = useTilt(8);
+  const Icon = formIcons[med.form] || formIcons.default;
+  const gradient = formColors[med.form] || 'from-gray-500 to-slate-600';
+  const hex = FORM_HEX[med.form] || '#64748b';
+  return (
+    <div {...tilt} className="module-3d tilt-3d group p-5 animate-pop"
+         style={{ '--m-soft': hexA(hex, 0.16), '--m-shadow': hexA(hex, 0.5), animationDelay: `${Math.min(idx * 35, 320)}ms` }}>
+      <div className="flex items-start justify-between depth-1">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className={`module-icon bg-gradient-to-br ${gradient} depth-2`}>
+            <Icon className="text-white text-lg" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-bold text-gray-900 dark:text-white truncate">{med.name}</h3>
+            {med.genericName && <p className="text-xs text-gray-500 truncate">{med.genericName}</p>}
+          </div>
+        </div>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onClick={() => onEdit(med)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors"><FiEdit2 className="text-sm" /></button>
+          <button onClick={() => onDelete(med._id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"><FiTrash2 className="text-sm" /></button>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2 depth-1">
+        {med.strength && <span className="badge badge-blue">{med.strength}</span>}
+        <span className="badge badge-purple">{med.form}</span>
+        {med.defaultTiming && (
+          <span className="badge badge-amber">
+            {TIMING_OPTIONS.find(t => t.value === med.defaultTiming)?.label || med.defaultTiming}
+          </span>
+        )}
+      </div>
+
+      {(med.defaultFrequency || med.defaultDuration) && (
+        <div className="mt-3 flex items-center gap-3 text-xs text-gray-500 depth-1">
+          {med.defaultFrequency && <span className="flex items-center gap-1"><FiClock className="text-gray-400" /> {med.defaultFrequency}</span>}
+          {med.defaultDuration && <span>• {med.defaultDuration}</span>}
+        </div>
+      )}
+
+      {med.usageCount > 0 && (
+        <div className="mt-2 text-[11px] text-gray-400 depth-1">
+          Used {med.usageCount} time{med.usageCount > 1 ? 's' : ''}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Medicines() {
   const [search, setSearch] = useState('');
@@ -120,63 +194,24 @@ export default function Medicines() {
 
   return (
     <div className="page-enter space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center glow-purple">
-              <FiPackage className="text-white text-lg" />
-            </div>
-            Medicine Library
-          </h1>
-          <p className="text-sm text-gray-500 mt-1 ml-[52px]">Quick-pick medicine templates for prescriptions</p>
-        </div>
-        <button onClick={openAdd} className="btn-primary flex items-center gap-2">
+      {/* Hero */}
+      <Hero3D
+        icon={FiPackage}
+        badge="Rx Library · Quick-pick"
+        title="Medicine Library"
+        subtitle="Quick-pick medicine templates for faster prescriptions"
+        gradient="radial-gradient(1200px 420px at 100% -20%, rgba(168,85,247,0.5), transparent 60%), linear-gradient(125deg,#4c1d95 0%,#7c3aed 50%,#be185d 100%)"
+      >
+        <button onClick={openAdd} className="inline-flex items-center gap-2 bg-white text-violet-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
           <FiPlus /> Add Medicine
         </button>
-      </div>
+      </Hero3D>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <ThreeDCard intensity={8}>
-          <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FaCapsules className="text-white text-lg" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
-                <p className="text-xs text-gray-500">Total Medicines</p>
-              </div>
-            </div>
-          </div>
-        </ThreeDCard>
-        <ThreeDCard intensity={8}>
-          <div className="p-5 bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border border-purple-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FaPills className="text-white text-lg" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">{stats.tablets}</p>
-                <p className="text-xs text-gray-500">Tablets</p>
-              </div>
-            </div>
-          </div>
-        </ThreeDCard>
-        <ThreeDCard intensity={8}>
-          <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl border border-emerald-100">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg">
-                <FiStar className="text-white text-lg" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900 truncate">{stats.mostUsed}</p>
-                <p className="text-xs text-gray-500">Most Used</p>
-              </div>
-            </div>
-          </div>
-        </ThreeDCard>
+      <div className="scene-3d grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <KpiTile icon={FaCapsules} accent="accent-cyan"   label="Total Medicines" value={stats.total} delay="0ms" />
+        <KpiTile icon={FaPills}    accent="accent-purple" label="Tablets"         value={stats.tablets} delay="80ms" />
+        <KpiTile icon={FiStar}     accent="accent-green"  label="Most Used"       text={stats.mostUsed} delay="160ms" />
       </div>
 
       {/* Search & Filter */}
@@ -218,71 +253,10 @@ export default function Medicines() {
           action={!search && <button onClick={openAdd} className="btn-primary text-sm">Add First Medicine</button>}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredMedicines.map((med, idx) => {
-            const Icon = formIcons[med.form] || formIcons.default;
-            const gradient = formColors[med.form] || 'from-gray-500 to-slate-600';
-            return (
-              <div
-                key={med._id}
-                className="card group animate-slide-in hover:shadow-lg"
-                style={{ animationDelay: `${idx * 30}ms` }}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3">
-                    <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg flex-shrink-0`}>
-                      <Icon className="text-white text-lg" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-bold text-gray-900 dark:text-white truncate">{med.name}</h3>
-                      {med.genericName && (
-                        <p className="text-xs text-gray-500 truncate">{med.genericName}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => openEdit(med)} className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors">
-                      <FiEdit2 className="text-sm" />
-                    </button>
-                    <button onClick={() => handleDelete(med._id)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors">
-                      <FiTrash2 className="text-sm" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {med.strength && (
-                    <span className="badge badge-blue">{med.strength}</span>
-                  )}
-                  <span className="badge badge-purple">{med.form}</span>
-                  {med.defaultTiming && (
-                    <span className="badge badge-amber">
-                      {TIMING_OPTIONS.find(t => t.value === med.defaultTiming)?.label || med.defaultTiming}
-                    </span>
-                  )}
-                </div>
-
-                {(med.defaultFrequency || med.defaultDuration) && (
-                  <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
-                    {med.defaultFrequency && (
-                      <span className="flex items-center gap-1">
-                        <FiClock className="text-gray-400" /> {med.defaultFrequency}
-                      </span>
-                    )}
-                    {med.defaultDuration && (
-                      <span>• {med.defaultDuration}</span>
-                    )}
-                  </div>
-                )}
-
-                {med.usageCount > 0 && (
-                  <div className="mt-2 text-[11px] text-gray-400">
-                    Used {med.usageCount} time{med.usageCount > 1 ? 's' : ''}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+        <div className="scene-3d grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredMedicines.map((med, idx) => (
+            <MedicineCard key={med._id} med={med} idx={idx} onEdit={openEdit} onDelete={handleDelete} />
+          ))}
         </div>
       )}
 

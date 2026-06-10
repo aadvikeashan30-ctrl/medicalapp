@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { FiPlus, FiX, FiPrinter, FiTrash2, FiDollarSign, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiX, FiPrinter, FiTrash2, FiDollarSign, FiDownload, FiCalendar, FiTrendingUp } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { useApi } from '../hooks/useApi';
@@ -7,6 +7,7 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import PrintInvoice from '../components/PrintInvoice';
 import PatientSearchSelect from '../components/PatientSearchSelect';
+import { Hero3D, useTilt } from '../components/Premium3D';
 
 const statusStyles = {
   paid: 'bg-emerald-100 text-emerald-700',
@@ -15,7 +16,37 @@ const statusStyles = {
   refunded: 'bg-gray-100 text-gray-700'
 };
 
+const STATUS_ACCENT = {
+  paid:    { dot: '#10b981', soft: 'rgba(16,185,129,0.12)', shadow: 'rgba(16,185,129,0.4)' },
+  partial: { dot: '#f59e0b', soft: 'rgba(245,158,11,0.12)', shadow: 'rgba(245,158,11,0.4)' },
+  pending: { dot: '#ef4444', soft: 'rgba(239,68,68,0.12)',  shadow: 'rgba(239,68,68,0.4)' },
+  refunded:{ dot: '#64748b', soft: 'rgba(100,116,139,0.12)', shadow: 'rgba(100,116,139,0.4)' },
+};
+
 const formatINR = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+/* Gradient revenue tile with 3D tilt + floating orb */
+function RevenueTile({ label, value, icon: Icon, gradient, delay }) {
+  const tilt = useTilt(9);
+  return (
+    <div {...tilt} className="tilt-3d relative overflow-hidden rounded-2xl p-5 text-white shadow-lg animate-pop"
+         style={{ background: gradient, animationDelay: delay, boxShadow: '0 16px 36px -14px rgba(0,0,0,0.4)' }}>
+      <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full bg-white/15 blur-xl" />
+      <div className="relative depth-1">
+        <div className="flex items-center justify-between">
+          <p className="text-white/80 text-sm font-medium">{label}</p>
+          <span className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center"><Icon size={16} /></span>
+        </div>
+        <p className="text-3xl font-extrabold mt-2 tabular-nums">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function TiltCard({ className = '', style, children }) {
+  const tilt = useTilt(6);
+  return <div {...tilt} className={`tilt-3d ${className}`} style={style}>{children}</div>;
+}
 
 export default function Billing() {
   const { data, loading, error, refetch } = useApi('/billing?limit=50');
@@ -123,132 +154,101 @@ export default function Billing() {
 
   return (
     <div className="page-enter space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center glow-emerald">
-              <FiDollarSign className="text-white text-lg" />
-            </div>
-            Billing
-          </h1>
-          <p className="text-gray-500 mt-1 ml-[52px]">Manage invoices and payments</p>
-        </div>
-        <div className="flex gap-2">
-          {bills.length > 0 && (
-            <button onClick={() => exportBillingCSV(bills)} className="btn-secondary flex items-center gap-2 text-sm">
-              <FiDownload /> Export CSV
-            </button>
-          )}
-          <button onClick={() => setShowAddModal(true)} className="btn-primary flex items-center gap-2">
-            <FiPlus /> Create Invoice
+      {/* Hero */}
+      <Hero3D
+        icon={FiDollarSign}
+        badge="Revenue & Invoicing · Live"
+        title="Billing"
+        subtitle="Create invoices, collect payments & track revenue"
+        gradient="radial-gradient(1200px 420px at 100% -20%, rgba(16,185,129,0.5), transparent 60%), linear-gradient(125deg,#065f46 0%,#0f766e 50%,#1d4ed8 100%)"
+      >
+        {bills.length > 0 && (
+          <button onClick={() => exportBillingCSV(bills)} className="inline-flex items-center gap-2 glass-chip text-white px-3 py-2 text-sm font-semibold hover:bg-white/20 transition-colors">
+            <FiDownload /> Export
           </button>
-        </div>
-      </div>
+        )}
+        <button onClick={() => setShowAddModal(true)} className="inline-flex items-center gap-2 bg-white text-emerald-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+          <FiPlus /> Create Invoice
+        </button>
+      </Hero3D>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 animate-fade-up stagger-2">
-        <div className="relative overflow-hidden rounded-2xl p-5 text-white border-gradient-animated" style={{ background: 'linear-gradient(135deg, #059669, #10b981)' }}>
-          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-          <p className="text-emerald-100 text-sm font-medium">Today's Collection</p>
-          <p className="text-3xl font-bold mt-1 tabular-nums">{formatINR(revenue?.today)}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #4f46e5, #6366f1)' }}>
-          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-          <p className="text-indigo-100 text-sm font-medium">This Month</p>
-          <p className="text-3xl font-bold mt-1 tabular-nums">{formatINR(revenue?.month)}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl p-5 text-white" style={{ background: 'linear-gradient(135deg, #7c3aed, #a855f7)' }}>
-          <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-          <p className="text-purple-100 text-sm font-medium">Lifetime Revenue</p>
-          <p className="text-3xl font-bold mt-1 tabular-nums">{formatINR(revenue?.total)}</p>
-        </div>
+      <div className="scene-3d grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <RevenueTile label="Today's Collection" value={formatINR(revenue?.today)} icon={FiDollarSign} gradient="linear-gradient(135deg, #059669, #10b981)" delay="0ms" />
+        <RevenueTile label="This Month" value={formatINR(revenue?.month)} icon={FiCalendar} gradient="linear-gradient(135deg, #4f46e5, #6366f1)" delay="80ms" />
+        <RevenueTile label="Lifetime Revenue" value={formatINR(revenue?.total)} icon={FiTrendingUp} gradient="linear-gradient(135deg, #7c3aed, #a855f7)" delay="160ms" />
       </div>
 
       {error && (
         <div className="rounded-xl bg-red-50 border border-red-100 text-red-700 px-4 py-3 text-sm">{error}</div>
       )}
 
-      <div className="card">
-        {loading ? (
-          <Loader label="Loading bills..." />
-        ) : bills.length === 0 ? (
-          <EmptyState
-            icon={FiDollarSign}
-            title="No invoices yet"
-            message="Create your first invoice to start tracking revenue."
-            action={
-              <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm">
-                Create Invoice
-              </button>
-            }
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-100">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Invoice</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Patient</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Items</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Amount</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {bills.map((bill) => (
-                  <tr key={bill._id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                    <td className="py-3 px-4">
-                      <p className="font-semibold text-gray-900">{bill.invoiceNo}</p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(bill.createdAt).toLocaleDateString('en-IN')}
+      {loading ? (
+        <Loader label="Loading bills..." />
+      ) : bills.length === 0 ? (
+        <EmptyState
+          icon={FiDollarSign}
+          title="No invoices yet"
+          message="Create your first invoice to start tracking revenue."
+          action={
+            <button onClick={() => setShowAddModal(true)} className="btn-primary text-sm">
+              Create Invoice
+            </button>
+          }
+        />
+      ) : (
+        <div className="scene-3d grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {bills.map((bill, idx) => {
+            const ac = STATUS_ACCENT[bill.paymentStatus] || STATUS_ACCENT.pending;
+            return (
+              <TiltCard key={bill._id} className="module-3d p-4 animate-pop"
+                style={{ '--m-soft': ac.soft, '--m-shadow': ac.shadow, animationDelay: `${Math.min(idx * 35, 320)}ms`, borderLeft: `4px solid ${ac.dot}` }}>
+                <div className="flex items-start justify-between gap-3 depth-1">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center text-white shadow-md flex-shrink-0"
+                         style={{ background: 'linear-gradient(135deg,#059669,#0891b2)', boxShadow: '0 8px 16px -5px rgba(5,150,105,0.5)' }}>
+                      <FiDollarSign className="text-lg" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-gray-900 truncate">{bill.patientId?.name || 'Patient'}</p>
+                      <p className="text-xs text-gray-400">
+                        <span className="font-mono">{bill.invoiceNo}</span> · {new Date(bill.createdAt).toLocaleDateString('en-IN')}
                       </p>
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="font-medium text-gray-900">{bill.patientId?.name}</p>
-                      <p className="text-xs text-gray-500">{bill.patientId?.patientId}</p>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      {bill.items?.map((i) => i.description).join(', ')}
-                    </td>
-                    <td className="py-3 px-4">
-                      <p className="font-bold text-gray-900">{formatINR(bill.totalAmount)}</p>
-                      {bill.paymentStatus === 'partial' && (
-                        <p className="text-xs text-yellow-600">Paid: {formatINR(bill.paidAmount)}</p>
-                      )}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${statusStyles[bill.paymentStatus] || ''}`}
-                      >
-                        {bill.paymentStatus.charAt(0).toUpperCase() + bill.paymentStatus.slice(1)}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setPrintBill(bill)}
-                          className="p-2 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-100"
-                          aria-label="Print"
-                        >
-                          <FiPrinter className="text-sm" />
-                        </button>
-                        {bill.paymentStatus !== 'paid' && (
-                          <button
-                            onClick={() => markPaid(bill)}
-                            className="text-xs bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-lg hover:bg-emerald-100"
-                          >
-                            Mark Paid
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                    </div>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold flex-shrink-0 ${statusStyles[bill.paymentStatus] || ''}`}>
+                    {bill.paymentStatus.charAt(0).toUpperCase() + bill.paymentStatus.slice(1)}
+                  </span>
+                </div>
+
+                {bill.items?.length > 0 && (
+                  <p className="text-xs text-gray-500 mt-3 line-clamp-1 depth-1">
+                    {bill.items.map((i) => i.description).join(', ')}
+                  </p>
+                )}
+
+                <div className="flex items-end justify-between mt-3 pt-3 border-t border-gray-100 depth-1">
+                  <div>
+                    <p className="text-2xl font-extrabold text-gray-900 tabular-nums">{formatINR(bill.totalAmount)}</p>
+                    {bill.paymentStatus === 'partial' && (
+                      <p className="text-xs text-yellow-600">Paid: {formatINR(bill.paidAmount)}</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={() => setPrintBill(bill)} className="p-2 bg-blue-50 rounded-lg text-blue-600 hover:bg-blue-100 active:scale-90 transition" aria-label="Print">
+                      <FiPrinter className="text-sm" />
+                    </button>
+                    {bill.paymentStatus !== 'paid' && (
+                      <button onClick={() => markPaid(bill)} className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-3 py-2 rounded-lg hover:bg-emerald-100 active:scale-95 transition">
+                        Mark Paid
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </TiltCard>
+            );
+          })}
+        </div>
+      )}
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
