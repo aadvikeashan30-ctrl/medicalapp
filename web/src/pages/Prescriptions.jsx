@@ -16,8 +16,32 @@ import AIPrescriptionHelper from '../components/AIPrescriptionHelper';
 import VoiceNotes from '../components/VoiceNotes';
 import PrintPrescription from '../components/PrintPrescription';
 import PatientSearchSelect from '../components/PatientSearchSelect';
+import AnimatedCounter from '../components/AnimatedCounter';
+import { Hero3D, useTilt } from '../components/Premium3D';
 
 const emptyMed = { name: '', dosage: '', frequency: '', duration: '', timing: 'after-food' };
+
+/* Lightweight 3D tilt wrapper so list cards can track the cursor */
+function TiltCard({ className = '', style, children }) {
+  const tilt = useTilt(6);
+  return <div {...tilt} className={`tilt-3d ${className}`} style={style}>{children}</div>;
+}
+
+/* ─── 3D KPI tile ───────────────────────────────────────────────── */
+function KpiTile({ icon: Icon, accent, label, value, delay }) {
+  const tilt = useTilt(10);
+  return (
+    <div {...tilt} className={`stat-3d tilt-3d ${accent} animate-pop`} style={{ animationDelay: delay }}>
+      <div className="flex items-start justify-between mb-3 depth-2">
+        <div className="stat-3d-icon"><Icon size={22} /></div>
+      </div>
+      <p className="text-[26px] font-extrabold text-gray-900 tabular-nums leading-none depth-1">
+        <AnimatedCounter end={Number(value || 0)} />
+      </p>
+      <p className="text-sm text-gray-500 mt-1.5 depth-1">{label}</p>
+    </div>
+  );
+}
 
 /* ─── Status config for queue badges ──────────────────────────────── */
 const QUEUE_STATUS = {
@@ -55,20 +79,27 @@ function VitalChip({ icon: Icon, label, value, color }) {
 
 /* ─── Queue Patient Card ──────────────────────────────────────────── */
 function QueueCard({ apt, idx, onPrescribe, onCallIn, onComplete }) {
+  const tilt = useTilt(6);
   const cfg = QUEUE_STATUS[apt.status] || { label: apt.status, color: '#94a3b8', bg: '#f8fafc', pulse: false };
   const clr = AVATAR_COLORS[idx % AVATAR_COLORS.length];
   const name = apt.patientId?.name || 'Patient';
   const initials = getInitials(name);
   const isWaiting = apt.status === 'WAITING_FOR_DOCTOR';
   const isInConsultation = apt.status === 'IN_CONSULTATION';
-  const isScheduled = apt.status === 'scheduled' || apt.status === 'confirmed';
+
+  const hexToA = (hex, a) => {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  };
 
   return (
     <div
-      className={`rounded-2xl border p-4 transition-all duration-200 ${isWaiting ? 'border-amber-200 bg-amber-50/60 shadow-md' : isInConsultation ? 'border-emerald-200 bg-emerald-50/60 shadow-md' : 'border-gray-100 bg-white hover:shadow-sm'}`}
+      {...tilt}
+      className="module-3d tilt-3d p-4 animate-pop"
+      style={{ '--m-soft': hexToA(cfg.color, 0.14), '--m-shadow': hexToA(cfg.color, 0.4), animationDelay: `${Math.min(idx * 45, 360)}ms`, borderLeft: `4px solid ${cfg.color}` }}
     >
       {/* Patient row */}
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-3 depth-1">
         <div className="flex items-center gap-3 min-w-0">
           {/* Token badge */}
           <div
@@ -103,7 +134,7 @@ function QueueCard({ apt, idx, onPrescribe, onCallIn, onComplete }) {
             <button
               onClick={() => onCallIn(apt)}
               title="Call In Patient"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-white hover:bg-amber-600 transition-colors shadow-sm active:scale-90"
             >
               <FiPlay size={11} /> Call In
             </button>
@@ -112,7 +143,7 @@ function QueueCard({ apt, idx, onPrescribe, onCallIn, onComplete }) {
             <button
               onClick={() => onPrescribe(apt)}
               title="Write Prescription"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-teal-600 text-white hover:bg-teal-700 transition-colors shadow-sm active:scale-90"
             >
               <FiFileText size={11} /> Rx
             </button>
@@ -121,7 +152,7 @@ function QueueCard({ apt, idx, onPrescribe, onCallIn, onComplete }) {
             <button
               onClick={() => onComplete(apt)}
               title="Mark Consultation Complete"
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 text-white hover:bg-emerald-700 transition-colors shadow-sm active:scale-90"
             >
               <FiCheck size={11} /> Done
             </button>
@@ -131,7 +162,7 @@ function QueueCard({ apt, idx, onPrescribe, onCallIn, onComplete }) {
 
       {/* Chief complaint */}
       {apt.chiefComplaint && (
-        <div className="mt-2.5 flex items-start gap-2">
+        <div className="mt-2.5 flex items-start gap-2 depth-1">
           <FiAlertCircle size={12} className="text-orange-400 mt-0.5 shrink-0" />
           <p className="text-xs text-gray-600 italic leading-snug">"{apt.chiefComplaint}"</p>
         </div>
@@ -139,7 +170,7 @@ function QueueCard({ apt, idx, onPrescribe, onCallIn, onComplete }) {
 
       {/* Nurse vitals strip */}
       {apt.vitals && Object.values(apt.vitals).some(Boolean) && (
-        <div className="mt-2.5 flex flex-wrap gap-1.5">
+        <div className="mt-2.5 flex flex-wrap gap-1.5 depth-1">
           <VitalChip icon={FiHeart} label="BP" value={apt.vitals.bp} color="#ef4444" />
           <VitalChip icon={FiActivity} label="Pulse" value={apt.vitals.pulse ? `${apt.vitals.pulse} bpm` : null} color="#f97316" />
           <VitalChip icon={() => <span className="text-[9px] font-bold">°F</span>} label="Temp" value={apt.vitals.temperature ? `${apt.vitals.temperature}°F` : null} color="#8b5cf6" />
@@ -205,6 +236,11 @@ export default function Prescriptions() {
 
   const waitingCount = queue.filter(a => a.status === 'WAITING_FOR_DOCTOR').length;
   const inConsultCount = queue.filter(a => a.status === 'IN_CONSULTATION').length;
+  const todayRxCount = prescriptions.filter(rx => {
+    if (!rx.createdAt) return false;
+    const d = new Date(rx.createdAt); const n = new Date();
+    return d.toDateString() === n.toDateString();
+  }).length;
 
   /* ── Queue actions ── */
   const handleCallIn = async (apt) => {
@@ -367,20 +403,30 @@ export default function Prescriptions() {
   return (
     <div className="page-enter space-y-6">
 
-      {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center" style={{ boxShadow: '0 4px 14px rgba(20,184,166,0.35)' }}>
-              <FiFileText className="text-white text-lg" />
-            </div>
-            Prescriptions
-          </h1>
-          <p className="text-gray-500 mt-1 ml-[52px]">Patient queue & digital prescriptions</p>
-        </div>
-        <button onClick={() => { setQueuePatient(null); setShowAddModal(true); }} className="btn-primary flex items-center gap-2">
+      {/* ── 3D Hero ── */}
+      <Hero3D
+        icon={FiFileText}
+        badge="Consultation Desk · Live"
+        title="Prescriptions"
+        subtitle="Live patient queue & digital prescriptions"
+        gradient="radial-gradient(1200px 420px at 100% -20%, rgba(45,212,191,0.5), transparent 60%), linear-gradient(125deg,#0f766e 0%,#0891b2 50%,#1d4ed8 100%)"
+      >
+        <button onClick={fetchQueue} disabled={queueLoading}
+          className="inline-flex items-center gap-2 glass-chip text-white px-3 py-2 text-sm font-semibold hover:bg-white/20 transition-colors">
+          <FiRefreshCw className={queueLoading ? 'animate-spin' : ''} /> Refresh
+        </button>
+        <button onClick={() => { setQueuePatient(null); setShowAddModal(true); }}
+          className="inline-flex items-center gap-2 bg-white text-teal-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
           <FiPlus /> New Prescription
         </button>
+      </Hero3D>
+
+      {/* ── KPI tiles ── */}
+      <div className="scene-3d grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiTile icon={FiClock}       accent="accent-orange" label="Waiting"         value={waitingCount} delay="0ms" />
+        <KpiTile icon={FiActivity}    accent="accent-green"  label="In Consultation" value={inConsultCount} delay="70ms" />
+        <KpiTile icon={FiFileText}    accent="accent-cyan"   label="Total Rx"        value={data?.total ?? prescriptions.length} delay="140ms" />
+        <KpiTile icon={FiCheckCircle} accent="accent-purple" label="Today"           value={todayRxCount} delay="210ms" />
       </div>
 
       {error && (
@@ -453,7 +499,7 @@ export default function Prescriptions() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          <div className="scene-3d grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {filteredQueue.map((apt, idx) => (
               <QueueCard
                 key={apt._id}
@@ -511,13 +557,14 @@ export default function Prescriptions() {
             }
           />
         ) : (
-          <div className="space-y-3">
-            {prescriptions.map((rx) => (
-              <div key={rx._id} className="card hover:shadow-md transition-all duration-200 animate-fade-up">
-                <div className="flex items-start justify-between">
+          <div className="scene-3d space-y-3">
+            {prescriptions.map((rx, ridx) => (
+              <TiltCard key={rx._id} className="module-3d p-5 animate-pop" style={{ '--m-soft': 'rgba(20,184,166,0.12)', '--m-shadow': 'rgba(20,184,166,0.4)', animationDelay: `${Math.min(ridx * 40, 320)}ms`, borderLeft: '4px solid #14b8a6' }}>
+                <div className="flex items-start justify-between depth-1">
                   <div className="flex items-center gap-4">
-                    <div className="w-11 h-11 bg-gradient-to-br from-indigo-50 to-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <FiFileText className="text-indigo-600 text-lg" />
+                    <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 text-white shadow-md"
+                         style={{ background: 'linear-gradient(135deg,#0f766e,#0891b2)', boxShadow: '0 8px 16px -5px rgba(20,184,166,0.5)' }}>
+                      <FiFileText className="text-lg" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -562,7 +609,7 @@ export default function Prescriptions() {
                   </div>
                 </div>
                 {rx.medicines?.length > 0 && (
-                  <div className="mt-3 pl-15">
+                  <div className="mt-3 depth-1">
                     <div className="flex flex-wrap gap-2">
                       {rx.medicines.slice(0, 4).map((med, i) => (
                         <span key={i} className="text-xs bg-gray-50 border border-gray-100 px-2.5 py-1 rounded-lg text-gray-700 font-medium">
@@ -576,7 +623,7 @@ export default function Prescriptions() {
                     </div>
                   </div>
                 )}
-              </div>
+              </TiltCard>
             ))}
           </div>
         )}
