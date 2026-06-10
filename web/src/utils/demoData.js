@@ -365,6 +365,32 @@ export const DEMO_RESPONSES = {
     warnings: [], advice: 'Rest, hydration, steam inhalation.', provider: 'demo'
   },
   '/notifications': [],
+  '/dashboard/revenue-daily': (() => {
+    const series = [];
+    const totals = { consultation: 0, lab: 0, pharmacy: 0, total: 0 };
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      d.setDate(d.getDate() - i);
+      const dow = d.getDay();
+      const base = dow === 0 ? 0.45 : 1; // lighter on Sundays
+      const consultation = Math.round((2500 + ((i * 137) % 1800)) * base);
+      const lab = Math.round((1200 + ((i * 91) % 1400)) * base);
+      const pharmacy = Math.round((1800 + ((i * 73) % 2200)) * base);
+      const total = consultation + lab + pharmacy;
+      totals.consultation += consultation;
+      totals.lab += lab;
+      totals.pharmacy += pharmacy;
+      totals.total += total;
+      series.push({
+        date: d.toISOString().slice(0, 10),
+        label: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        weekday: d.toLocaleDateString('en-IN', { weekday: 'short' }),
+        consultation, lab, pharmacy, total
+      });
+    }
+    return { days: 14, series, totals, today: series[series.length - 1] };
+  })(),
   '/pharmacy': {
     items: [
       { _id: 'ph-1', name: 'Paracetamol', strength: '500mg', form: 'tablet', category: 'Analgesic', manufacturer: 'Cipla', unitsPerStrip: 10, reorderLevel: 100, rackLocation: 'A1', barcode: '8901234500011', batchNo: 'PCM2401', totalQuantity: 480, totalStrips: 48, looseUnits: 0, nearestExpiry: new Date(Date.now() + 220 * 86400000).toISOString(), purchasePrice: 1.2, sellingPrice: 2, stockValue: 960, batches: [], flags: { expired: false, nearExpiry: false, outOfStock: false, lowStock: false } },

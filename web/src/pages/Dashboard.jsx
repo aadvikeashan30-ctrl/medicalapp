@@ -136,6 +136,94 @@ function UpcomingRow({ time, name, sub, idx }) {
   );
 }
 
+/* ─── Daily Revenue (day-wise, multi-source) ───────────────────── */
+const REV_SOURCES = [
+  { key: 'consultation', label: 'Consultation', color: '#1a8c8c' },
+  { key: 'lab',          label: 'Lab',          color: '#0369a1' },
+  { key: 'pharmacy',     label: 'Pharmacy / Medicines', color: '#b45309' },
+];
+const inr = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`;
+
+function DailyRevenueCard({ data, loading }) {
+  const series = data?.series || [];
+  const totals = data?.totals || { consultation: 0, lab: 0, pharmacy: 0, total: 0 };
+  const today = data?.today;
+  const maxTotal = Math.max(...series.map(s => s.total), 1);
+
+  return (
+    <div className="card animate-fade-up stagger-4">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Daily Revenue</h2>
+          <p className="text-xs text-gray-400">Last {data?.days || 14} days · consultation + lab + pharmacy</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[11px] text-gray-400">Today</p>
+          <p className="text-xl font-bold tabular-nums" style={{ color: 'var(--nav-bg)' }}>{inr(today?.total)}</p>
+        </div>
+      </div>
+
+      {loading ? (
+        <Loader label="Loading revenue…" />
+      ) : series.length === 0 ? (
+        <div className="py-10 text-center text-sm text-gray-400">No revenue recorded yet</div>
+      ) : (
+        <>
+          {/* Stacked bar chart */}
+          <div className="flex items-end gap-1.5 h-44 overflow-x-auto pb-1">
+            {series.map((d, i) => {
+              const h = Math.round((d.total / maxTotal) * 100);
+              const isToday = i === series.length - 1;
+              return (
+                <div key={d.date} className="flex flex-col items-center gap-1 flex-1 min-w-[26px] group">
+                  <span className="text-[9px] font-semibold text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">
+                    {d.total >= 1000 ? `${(d.total / 1000).toFixed(1)}k` : d.total}
+                  </span>
+                  <div
+                    className="w-full flex flex-col-reverse rounded-t-md overflow-hidden bg-gray-100 transition-all"
+                    style={{ height: `${Math.max(h, 2)}%` }}
+                    title={`${d.label}: ${inr(d.total)}\nConsultation ${inr(d.consultation)} · Lab ${inr(d.lab)} · Pharmacy ${inr(d.pharmacy)}`}
+                  >
+                    {REV_SOURCES.map(s => {
+                      const seg = d.total ? (d[s.key] / d.total) * 100 : 0;
+                      return seg > 0 ? (
+                        <div key={s.key} style={{ height: `${seg}%`, background: s.color }} />
+                      ) : null;
+                    })}
+                  </div>
+                  <span className={`text-[9px] tabular-nums ${isToday ? 'font-bold text-gray-700' : 'text-gray-400'}`}>
+                    {d.label.split(' ')[0]}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Legend + per-source totals */}
+          <div className="mt-4 pt-3 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {REV_SOURCES.map(s => (
+              <div key={s.key} className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ background: s.color }} />
+                <div className="min-w-0">
+                  <p className="text-[11px] text-gray-500 truncate">{s.label}</p>
+                  <p className="text-sm font-semibold text-gray-800 tabular-nums">{inr(totals[s.key])}</p>
+                </div>
+              </div>
+            ))}
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0 bg-gray-800" />
+              <div className="min-w-0">
+                <p className="text-[11px] text-gray-500 truncate">Total ({data?.days || 14}d)</p>
+                <p className="text-sm font-bold text-gray-900 tabular-nums">{inr(totals.total)}</p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════════════
    DASHBOARD
 ═══════════════════════════════════════════════════════════════════ */
@@ -159,6 +247,7 @@ export default function Dashboard() {
   }, [refreshTrigger, refetchQueue, refetchStats]);
   const { data: analytics } = useApi('/dashboard/analytics');
   const { data: revenue }   = useApi('/billing/revenue/summary');
+  const { data: dailyRevenue, loading: dailyRevenueLoading } = useApi('/dashboard/revenue-daily?days=14');
 
   /* Upcoming appointments (next few from queue) */
   const upcoming = useMemo(() => {
@@ -294,6 +383,9 @@ export default function Dashboard() {
           {statCards.map(c => <StatCard key={c.label} {...c} />)}
         </div>
       )}
+
+      {/* ── Daily Revenue (day-wise: consultation + lab + pharmacy) ── */}
+      <DailyRevenueCard data={dailyRevenue} loading={dailyRevenueLoading} />
 
       {/* ── Main Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

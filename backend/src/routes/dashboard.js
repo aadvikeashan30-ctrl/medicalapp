@@ -110,6 +110,90 @@ router.get(
   })
 );
 
+// ── Day-wise revenue across all sources ──────────────────────────
+// Breaks down revenue per day into Consultation, Lab and Pharmacy/Medicines
+// by combining billed line items (categorised by description) with the
+// pharmacy point-of-sale stream.
+router.get(
+  '/revenue-daily',
+  auth,
+  asyncHandler(async (req, res) => {
+    const PharmacyItem = require('../models/PharmacyItem');
+    const doctorId = req.user._id;
+
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 14, 1), 90);
+    const since = new Date();
+    since.setHours(0, 0, 0, 0);
+    since.setDate(since.getDate() - (days - 1));
+
+    const labRe = 'lab|test|scan|x-?ray|mri|ultrasound|sonograph|blood|urine|biopsy|patholog|radiolog|ecg|culture';
+    const medRe = 'medicine|pharma|tablet|\\btab\\b|\\bcap\\b|capsule|syrup|drug|injection|ointment|\\brx\\b|dispens';
+
+    const [billingAgg, pharmacyAgg] = await Promise.all([
+      Billing.aggregate([
+        { $match: { doctorId, createdAt: { $gte: since }, paymentStatus: { $in: ['paid', 'partial'] } } },
+        { $unwind: { path: '$items', preserveNullAndEmptyArrays: true } },
+        {
+          $project: {
+            day: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            desc: { $ifNull: ['$items.description', ''] },
+            lineTotal: {
+              $multiply: [{ $ifNull: ['$items.amount', 0] }, { $ifNull: ['$items.quantity', 1] }]
+            }
+          }
+        },
+        {
+          $group: {
+            _id: '$day',
+            lab: { $sum: { $cond: [{ $regexMatch: { input: '$desc', regex: labRe, options: 'i' } }, '$lineTotal', 0] } },
+            medicine: { $sum: { $cond: [{ $regexMatch: { input: '$desc', regex: medRe, options: 'i' } }, '$lineTotal', 0] } },
+            all: { $sum: '$lineTotal' }
+          }
+        }
+      ]),
+      PharmacyItem.aggregate([
+        { $match: { doctorId } },
+        { $unwind: '$sales' },
+        { $match: { 'sales.date': { $gte: since } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$sales.date' } },
+            revenue: { $sum: '$sales.revenue' }
+          }
+        }
+      ])
+    ]);
+
+    const billingMap = billingAgg.reduce((acc, d) => { acc[d._id] = d; return acc; }, {});
+    const pharmacyMap = pharmacyAgg.reduce((acc, d) => { acc[d._id] = d.revenue || 0; return acc; }, {});
+
+    const series = [];
+    const totals = { consultation: 0, lab: 0, pharmacy: 0, total: 0 };
+    for (let i = 0; i < days; i++) {
+      const d = new Date(since);
+      d.setDate(since.getDate() + i);
+      const key = d.toISOString().slice(0, 10);
+      const b = billingMap[key] || { lab: 0, medicine: 0, all: 0 };
+      const lab = Math.round(b.lab || 0);
+      const pharmacy = Math.round((b.medicine || 0) + (pharmacyMap[key] || 0));
+      const consultation = Math.round(Math.max((b.all || 0) - (b.lab || 0) - (b.medicine || 0), 0));
+      const total = consultation + lab + pharmacy;
+      totals.consultation += consultation;
+      totals.lab += lab;
+      totals.pharmacy += pharmacy;
+      totals.total += total;
+      series.push({
+        date: key,
+        label: d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        weekday: d.toLocaleDateString('en-IN', { weekday: 'short' }),
+        consultation, lab, pharmacy, total
+      });
+    }
+
+    res.json({ days, series, totals, today: series[series.length - 1] || null });
+  })
+);
+
 // ── Doctor Practice Insights ──────────────────────────────────────
 // Top diagnoses, prescribing patterns, no-show rate, peak hours, type mix
 router.get(
