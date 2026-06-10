@@ -10,7 +10,7 @@ import {
   FiTrendingUp, FiMapPin, FiDatabase, FiGlobe,
   FiChevronDown, FiList, FiCamera, FiWifi,
   FiInbox, FiVideo, FiZap, FiWatch, FiShare2,
-  FiGrid, FiAlertOctagon, FiRefreshCw, FiUserCheck
+  FiGrid, FiAlertOctagon, FiRefreshCw, FiUserCheck, FiTool
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
 import NotificationCenter from './NotificationCenter';
@@ -47,6 +47,7 @@ const moreNavGroups = [
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
       { path: '/care-pathways',    icon: FiList,          label: 'Care Pathways' },
       { path: '/wound-tracker',    icon: FiCamera,        label: 'Wound & Skin Tracker' },
+      { path: '/pharmacy-inventory', icon: FiPackage, label: 'Pharmacy Inventory' },
       { path: '/vaccinations',     icon: FiShield,        label: 'Vaccinations' },
       { path: '/certificates',     icon: FiAward,         label: 'Medical Certificates' },
       { path: '/availability',     icon: FiCalendar,      label: 'Availability & Leave' },
@@ -94,6 +95,7 @@ const moreNavGroups = [
       { path: '/wearables',       icon: FiWatch,         label: 'Wearable Monitoring' },
       { path: '/interoperability',icon: FiShare2,        label: 'FHIR Interoperability' },
       { path: '/branches',        icon: FiMapPin,        label: 'Branches & Team' },
+      { path: '/equipment',       icon: FiTool,          label: 'Equipment & AMC' },
       { path: '/attendance',      icon: FiUserCheck,     label: 'Staff Attendance' },
       { path: '/payroll',         icon: FiDollarSign,    label: 'Payroll' },
       { path: '/audit-logs',      icon: FiDatabase,      label: 'Audit & Backup' },

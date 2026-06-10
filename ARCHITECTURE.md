@@ -186,6 +186,8 @@ This is a comprehensive AI-powered healthcare platform built on top of the exist
 18. **Branch** - Multi-branch clinic data
 19. **AuditLog** - Complete activity audit trail
 20. **Backup** - Backup metadata and management
+21. **PharmacyItem** - Smart pharmacy inventory: multi-batch stock (qty, batch no, expiry, purchase/selling price), FEFO sales log, reorder levels
+22. **Equipment** - Equipment registry with maintenance history, service scheduling and AMC contract tracking
 
 ---
 
@@ -211,6 +213,8 @@ This is a comprehensive AI-powered healthcare platform built on top of the exist
 | Referrals | `/referrals` | Business |
 | AuditLogs | `/audit-logs` | Enterprise |
 | BranchManagement | `/branches` | Enterprise |
+| PharmacyInventory | `/pharmacy-inventory` | Pharmacy |
+| EquipmentManagement | `/equipment` | Enterprise |
 
 ### Mobile Screens Added (5)
 - AIAssistantScreen
