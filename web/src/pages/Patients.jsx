@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import {
   FiSearch, FiPlus, FiPhone, FiUser, FiX, FiEdit2, FiTrash2, FiUsers,
-  FiDownload, FiExternalLink, FiHash
+  FiDownload, FiExternalLink, FiHash, FiActivity, FiDollarSign, FiUserPlus,
+  FiAlertCircle
 } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -12,11 +13,124 @@ import Loader from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import AIPatientRisk from '../components/AIPatientRisk';
 import QuickWhatsApp from '../components/QuickWhatsApp';
+import AnimatedCounter from '../components/AnimatedCounter';
+import { Hero3D, useTilt } from '../components/Premium3D';
 
 const emptyPatient = {
   name: '', phone: '', email: '', age: '', gender: 'male',
   bloodGroup: '', address: '', city: '', allergies: ''
 };
+
+const GENDER_STYLE = {
+  male:   { av: 'linear-gradient(135deg,#3b82f6,#4f46e5)', soft: 'rgba(59,130,246,0.16)', shadow: 'rgba(59,130,246,0.45)' },
+  female: { av: 'linear-gradient(135deg,#ec4899,#f43f5e)', soft: 'rgba(236,72,153,0.16)', shadow: 'rgba(236,72,153,0.45)' },
+  other:  { av: 'linear-gradient(135deg,#a855f7,#8b5cf6)', soft: 'rgba(168,85,247,0.16)', shadow: 'rgba(168,85,247,0.45)' },
+};
+
+/* ─── 3D tilt patient card ──────────────────────────────────────── */
+function PatientCard({ p, idx, onEdit, onDelete, onRisk, riskOpen, onWhatsapp }) {
+  const tilt = useTilt(7);
+  const gs = GENDER_STYLE[p.gender] || GENDER_STYLE.other;
+  const hasAllergy = (p.allergies || []).length > 0;
+  return (
+    <div
+      {...tilt}
+      className="module-3d tilt-3d p-5 animate-pop"
+      style={{ '--m-soft': gs.soft, '--m-shadow': gs.shadow, animationDelay: `${Math.min(idx * 45, 360)}ms` }}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3 depth-1">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg text-white shadow-md"
+               style={{ background: gs.av, boxShadow: `0 8px 18px -5px ${gs.shadow}` }}>
+            {p.name?.charAt(0)?.toUpperCase()}
+          </div>
+          <div>
+            <Link to={`/patients/${p._id}`} className="font-semibold text-gray-900 hover:text-blue-600 transition-colors">
+              {p.name}
+            </Link>
+            <p className="text-xs text-gray-400 font-mono">{p.patientId}</p>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          <button onClick={() => onEdit(p)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600" aria-label="Edit patient">
+            <FiEdit2 className="text-sm" />
+          </button>
+          <button onClick={() => onDelete(p._id)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-600" aria-label="Delete patient">
+            <FiTrash2 className="text-sm" />
+          </button>
+        </div>
+      </div>
+
+      {/* Info chips */}
+      <div className="flex flex-wrap gap-1.5 mb-4 depth-1">
+        <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg flex items-center gap-1">
+          <FiUser className="text-gray-400" size={11} /> {p.age ? `${p.age}y` : '—'} · {p.gender === 'male' ? 'M' : p.gender === 'female' ? 'F' : 'O'}
+        </span>
+        {p.bloodGroup && (
+          <span className="text-xs font-bold bg-red-50 text-red-600 px-2.5 py-1 rounded-lg">{p.bloodGroup}</span>
+        )}
+        <span className="text-xs font-medium bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg flex items-center gap-1">
+          <FiPhone className="text-gray-400" size={11} /> {p.phone}
+        </span>
+        {hasAllergy && (
+          <span className="text-xs font-semibold bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg flex items-center gap-1" title={(p.allergies || []).join(', ')}>
+            <FiAlertCircle size={11} /> Allergy
+          </span>
+        )}
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-2 gap-2 mb-4 depth-1">
+        <div className="rounded-xl bg-gray-50 px-3 py-2">
+          <p className="text-[10px] uppercase tracking-wide text-gray-400">Visits</p>
+          <p className="text-base font-bold text-gray-800 tabular-nums">{p.totalVisits || 0}</p>
+        </div>
+        <div className="rounded-xl px-3 py-2" style={{ background: 'linear-gradient(135deg,#ecfdf5,#f0fdfa)' }}>
+          <p className="text-[10px] uppercase tracking-wide text-gray-400">Billed</p>
+          <p className="text-base font-bold text-emerald-600 tabular-nums">₹{Number(p.totalBilled || 0).toLocaleString('en-IN')}</p>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-1.5 depth-1">
+        <Link to={`/patients/${p._id}`}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-blue-500 text-white hover:bg-blue-600 shadow-sm transition-all hover:shadow-md active:scale-95">
+          <FiExternalLink className="text-xs" /> View
+        </Link>
+        <button onClick={() => onRisk(riskOpen ? null : p)}
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition-all hover:shadow-md active:scale-95 ${riskOpen ? 'bg-violet-600 text-white' : 'bg-violet-500 text-white hover:bg-violet-600'}`}>
+          <FiActivity className="text-xs" /> AI Risk
+        </button>
+        <button onClick={() => onWhatsapp(p)}
+          className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl bg-green-500 text-white hover:bg-green-600 shadow-sm transition-all hover:shadow-md active:scale-95">
+          <FaWhatsapp className="text-xs" /> Message
+        </button>
+      </div>
+
+      {riskOpen && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <AIPatientRisk patient={p} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── 3D KPI tile ───────────────────────────────────────────────── */
+function KpiTile({ icon: Icon, accent, label, value, money, delay }) {
+  const tilt = useTilt(10);
+  return (
+    <div {...tilt} className={`stat-3d tilt-3d ${accent} animate-pop`} style={{ animationDelay: delay }}>
+      <div className="flex items-start justify-between mb-3 depth-2">
+        <div className="stat-3d-icon"><Icon size={22} /></div>
+      </div>
+      <p className="text-[26px] font-extrabold text-gray-900 tabular-nums leading-none depth-1">
+        {money ? `₹${Number(value || 0).toLocaleString('en-IN')}` : <AnimatedCounter end={Number(value || 0)} />}
+      </p>
+      <p className="text-sm text-gray-500 mt-1.5 depth-1">{label}</p>
+    </div>
+  );
+}
 
 export default function Patients() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,6 +161,18 @@ export default function Patients() {
 
   const { data, loading, error, refetch } = useApi(url);
   const patients = data?.patients || [];
+
+  // Live KPIs from the loaded list
+  const kpis = useMemo(() => {
+    const now = new Date();
+    const som = new Date(now.getFullYear(), now.getMonth(), 1);
+    return {
+      total: data?.total ?? patients.length,
+      newThisMonth: patients.filter(p => p.createdAt && new Date(p.createdAt) >= som).length,
+      visits: patients.reduce((s, p) => s + (p.totalVisits || 0), 0),
+      billed: patients.reduce((s, p) => s + (p.totalBilled || 0), 0),
+    };
+  }, [data, patients]);
 
   const openAdd = () => {
     setEditing(null);
@@ -141,33 +267,36 @@ export default function Patients() {
 
   return (
     <div className="page-enter space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="animate-fade-up">
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center glow-indigo">
-              <FiUsers className="text-white text-lg" />
-            </div>
-            Patients
-          </h1>
-          <p className="text-gray-500 mt-1 ml-[52px]">
-            {data ? (
-              <span className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">{data.total}</span> total patients registered
-              </span>
-            ) : 'Loading...'}
-          </p>
-        </div>
-        <div className="flex gap-2 animate-fade-up stagger-2">
-          {patients.length > 0 && (
-            <button onClick={() => exportPatientsCSV(patients)} className="btn-secondary flex items-center gap-2 text-sm !py-2">
-              <FiDownload /> Export
-            </button>
-          )}
-          <button onClick={openAdd} className="btn-primary flex items-center gap-2">
-            <FiPlus /> Add Patient
+      {/* ── 3D Hero ── */}
+      <Hero3D
+        icon={FiUsers}
+        badge="Patient Registry · Live"
+        title="Patients"
+        subtitle={data ? `${data.total} patients registered in your practice` : 'Loading patient registry…'}
+        gradient="radial-gradient(1200px 420px at 100% -20%, rgba(59,130,246,0.5), transparent 60%), linear-gradient(125deg,#1e3a8a 0%,#4338ca 50%,#0e7490 100%)"
+      >
+        {patients.length > 0 && (
+          <button onClick={() => exportPatientsCSV(patients)}
+            className="inline-flex items-center gap-2 glass-chip text-white px-4 py-2 text-sm font-semibold hover:bg-white/20 transition-colors">
+            <FiDownload /> Export
           </button>
-        </div>
+        )}
+        <button onClick={openAdd}
+          className="inline-flex items-center gap-2 bg-white text-blue-700 px-4 py-2 rounded-[14px] text-sm font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
+          <FiPlus /> Add Patient
+        </button>
+      </Hero3D>
+
+      {/* ── KPI tiles ── */}
+      <div className="scene-3d grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { icon: FiUsers,     accent: 'accent-cyan',   label: 'Total Patients', value: kpis.total },
+          { icon: FiUserPlus,  accent: 'accent-green',  label: 'New This Month', value: kpis.newThisMonth },
+          { icon: FiActivity,  accent: 'accent-purple', label: 'Total Visits',   value: kpis.visits },
+          { icon: FiDollarSign, accent: 'accent-orange', label: 'Total Billed',  value: kpis.billed, money: true },
+        ].map((k, i) => (
+          <KpiTile key={k.label} {...k} delay={`${i * 70}ms`} />
+        ))}
       </div>
 
       {/* Search with animated focus */}
@@ -206,102 +335,18 @@ export default function Patients() {
           action={<button onClick={openAdd} className="btn-primary text-sm">Add Patient</button>}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="scene-3d grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {patients.map((p, idx) => (
-            <div key={p._id} className="card card-3d border-gradient-animated animate-fade-up" style={{ animationDelay: `${Math.min(idx * 50, 300)}ms` }}>
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg avatar-3d ${
-                      p.gender === 'male'
-                        ? 'bg-gradient-to-br from-blue-100 to-indigo-100 text-blue-700 border border-blue-200'
-                        : p.gender === 'female'
-                        ? 'bg-gradient-to-br from-pink-100 to-rose-100 text-pink-700 border border-pink-200'
-                        : 'bg-gradient-to-br from-purple-100 to-violet-100 text-purple-700 border border-purple-200'
-                    }`}
-                  >
-                    {p.name?.charAt(0)?.toUpperCase()}
-                  </div>
-                  <div>
-                    <Link to={`/patients/${p._id}`} className="font-semibold text-gray-900 hover:text-blue-600 transition-colors cursor-pointer">
-                      {p.name}
-                    </Link>
-                    <p className="text-xs text-gray-500">{p.patientId}</p>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => openEdit(p)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600"
-                    aria-label="Edit patient"
-                  >
-                    <FiEdit2 className="text-sm" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(p._id)}
-                    className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-red-600"
-                    aria-label="Delete patient"
-                  >
-                    <FiTrash2 className="text-sm" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-sm mb-4">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <FiUser className="text-gray-400" />
-                  <span>{p.age ? `${p.age}y, ` : ''}{p.gender === 'male' ? 'M' : p.gender === 'female' ? 'F' : 'O'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  {p.bloodGroup && (
-                    <span className="text-xs font-medium bg-red-50 text-red-600 px-2 py-0.5 rounded">
-                      {p.bloodGroup}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <FiPhone className="text-gray-400" />
-                  <span>{p.phone}</span>
-                </div>
-                <div className="text-gray-600 text-xs">{p.totalVisits || 0} visits</div>
-              </div>
-
-              <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                <span className="text-sm font-semibold text-emerald-600">
-                  ₹{Number(p.totalBilled || 0).toLocaleString('en-IN')}
-                </span>
-                <div className="flex gap-1.5">
-                  <Link
-                    to={`/patients/${p._id}`}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 shadow-sm transition-all hover:shadow-md active:scale-95"
-                  >
-                    <FiExternalLink className="text-xs" /> View
-                  </Link>
-                  <button
-                    onClick={() => setRiskPatient(riskPatient?._id === p._id ? null : p)}
-                    className={`inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg shadow-sm transition-all hover:shadow-md active:scale-95 ${
-                      riskPatient?._id === p._id
-                        ? 'bg-violet-600 text-white'
-                        : 'bg-violet-500 text-white hover:bg-violet-600'
-                    }`}
-                  >
-                    <FiUser className="text-xs" /> AI Risk
-                  </button>
-                  <button
-                    onClick={() => setWhatsappPatient(p)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg bg-green-500 text-white hover:bg-green-600 shadow-sm transition-all hover:shadow-md active:scale-95"
-                  >
-                    <FaWhatsapp className="text-xs" /> Message
-                  </button>
-                </div>
-              </div>
-
-              {riskPatient?._id === p._id && (
-                <div className="mt-3 pt-3 border-t border-gray-100">
-                  <AIPatientRisk patient={p} />
-                </div>
-              )}
-            </div>
+            <PatientCard
+              key={p._id}
+              p={p}
+              idx={idx}
+              onEdit={openEdit}
+              onDelete={handleDelete}
+              onRisk={setRiskPatient}
+              riskOpen={riskPatient?._id === p._id}
+              onWhatsapp={setWhatsappPatient}
+            />
           ))}
         </div>
       )}
