@@ -1,15 +1,34 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   FiUserPlus, FiSearch, FiCreditCard, FiActivity, FiUsers,
   FiPlus, FiCheckCircle, FiCheck, FiUser, FiDollarSign,
   FiFolder, FiHeart, FiLayers, FiAlertCircle, FiClock,
   FiPrinter, FiArrowRight, FiShield, FiPhone, FiBookOpen, FiBookmark,
-  FiSend
+  FiSend, FiZap, FiRefreshCw
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import { getUser } from '../utils/auth';
 import Loader from '../components/Loader';
+import { useTilt } from '../components/Premium3D';
+
+/* Live-queue status display map (label + color theme) */
+const QUEUE_STATUS = {
+  REGISTERED:              { label: 'Registered',      dot: '#64748b', chip: 'bg-gray-100 text-gray-600 border-gray-200' },
+  PAYMENT_PENDING:         { label: 'Payment Due',     dot: '#ef4444', chip: 'bg-red-50 text-red-700 border-red-100' },
+  PAYMENT_COMPLETED:       { label: 'Paid',            dot: '#f59e0b', chip: 'bg-amber-50 text-amber-700 border-amber-100' },
+  VITALS_PENDING:          { label: 'Vitals Pending',  dot: '#f59e0b', chip: 'bg-amber-50 text-amber-700 border-amber-100' },
+  VITALS_COMPLETED:        { label: 'Vitals Done',     dot: '#3b82f6', chip: 'bg-blue-50 text-blue-700 border-blue-100' },
+  WAITING_FOR_DOCTOR:      { label: 'Waiting',         dot: '#3b82f6', chip: 'bg-blue-50 text-blue-700 border-blue-100' },
+  IN_CONSULTATION:         { label: 'In Consult',      dot: '#a855f7', chip: 'bg-purple-50 text-purple-700 border-purple-100' },
+  CONSULTATION_COMPLETED:  { label: 'Completed',       dot: '#10b981', chip: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
+};
+
+/* Lightweight 3D tilt wrapper so each queue card can track the cursor */
+function TiltCard({ className = '', style, children }) {
+  const tilt = useTilt(6);
+  return <div {...tilt} className={`tilt-3d ${className}`} style={style}>{children}</div>;
+}
 
 const DEPARTMENTS = [
   { value: 'general', label: 'General Medicine' },
@@ -35,6 +54,9 @@ const TEMPLATE_COMPLAINTS = [
 export default function Receptionist() {
   const currentUser = getUser();
   const [activeStep, setActiveStep] = useState(1);
+  const [clock, setClock] = useState(new Date());
+  const [queueFilter, setQueueFilter] = useState('ALL');
+  const [queueSearch, setQueueSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -124,6 +146,48 @@ export default function Receptionist() {
     fetchQueue();
     fetchDoctors();
   }, []);
+
+  // Live ticking clock
+  useEffect(() => {
+    const id = setInterval(() => setClock(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Real-time queue KPIs
+  const queueStats = useMemo(() => ({
+    total: todayQueue.length,
+    paymentPending: todayQueue.filter(a => a.status === 'PAYMENT_PENDING').length,
+    vitalsPending: todayQueue.filter(a => ['PAYMENT_COMPLETED', 'VITALS_PENDING'].includes(a.status)).length,
+    waiting: todayQueue.filter(a => ['VITALS_COMPLETED', 'WAITING_FOR_DOCTOR'].includes(a.status)).length,
+    inConsult: todayQueue.filter(a => a.status === 'IN_CONSULTATION').length,
+    completed: todayQueue.filter(a => a.status === 'CONSULTATION_COMPLETED').length,
+  }), [todayQueue]);
+
+  // Queue filtering (status chips + search)
+  const filteredQueue = useMemo(() => {
+    const q = queueSearch.trim().toLowerCase();
+    return todayQueue.filter(apt => {
+      const matchStatus =
+        queueFilter === 'ALL' ||
+        (queueFilter === 'ACTIVE' && apt.status !== 'CONSULTATION_COMPLETED') ||
+        apt.status === queueFilter;
+      const matchSearch = !q ||
+        apt.patientId?.name?.toLowerCase().includes(q) ||
+        apt.patientId?.patientId?.toLowerCase().includes(q) ||
+        String(apt.tokenNumber || '').includes(q);
+      return matchStatus && matchSearch;
+    });
+  }, [todayQueue, queueFilter, queueSearch]);
+
+  // Estimated wait (10 min per person ahead in the waiting line)
+  const waitingOrder = useMemo(
+    () => todayQueue.filter(a => ['VITALS_COMPLETED', 'WAITING_FOR_DOCTOR'].includes(a.status)).map(a => a._id),
+    [todayQueue]
+  );
+  const estWait = (id) => {
+    const i = waitingOrder.indexOf(id);
+    return i >= 0 ? (i + 1) * 10 : 0;
+  };
 
   // Recalculate BMI when height/weight changes
   useEffect(() => {
@@ -284,40 +348,88 @@ export default function Receptionist() {
   const currentDoctorName = DOCTORS.find(d => d.value === docForm.doctor)?.label.split(' (')[0] || `Dr. ${currentUser.name}`;
 
   return (
-    <div className="space-y-6">
-      {/* Step Tracker */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-blue-600 to-indigo-800 p-6 text-white shadow-lg">
-        <h1 className="text-2xl font-bold flex items-center gap-3">
-          <FiLayers className="text-white text-xl animate-pulse" />
-          HMS Patient Journey Hub
-        </h1>
-        <p className="text-indigo-100 text-sm mt-1">Manage check-in, registration, vitals, queue, and doctor consultation</p>
+    <div className="space-y-6 page-enter">
+      {/* ── 3D Reception Command Hero ── */}
+      <div className="hero-3d px-6 py-6 sm:px-8"
+           style={{ background: 'radial-gradient(1200px 420px at 100% -20%, rgba(56,189,248,0.5), transparent 60%), linear-gradient(125deg,#312e81 0%,#1d4ed8 50%,#0e7490 100%)' }}>
+        <div className="hero-grid" />
+        <span className="orb-3d orb-a" />
+        <span className="orb-3d orb-b" />
+        <span className="orb-3d orb-c" />
 
-        {/* Wizard Steps */}
-        <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-          {[
-            { nr: 1, title: 'Check-In / Register', desc: 'Patient Arrival' },
-            { nr: 2, title: 'Doctor Selection', desc: 'Select Clinic' },
-            { nr: 3, title: 'Fee Settlement', desc: 'Collect Payments' }
-          ].map(s => {
-            const isCurrent = activeStep === s.nr;
-            const isDone = activeStep > s.nr;
-            return (
-              <div key={s.nr} className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border transition-all ${
-                  isCurrent ? 'bg-white text-indigo-700 border-white' :
-                  isDone ? 'bg-emerald-500 text-white border-emerald-500 shadow-md' :
-                  'text-indigo-200 border-indigo-400'
-                }`}>
-                  {isDone ? <FiCheck /> : s.nr}
-                </div>
-                <div className="text-left leading-tight hidden md:block">
-                  <p className={`text-xs font-semibold ${isCurrent ? 'text-white' : 'text-indigo-200'}`}>{s.title}</p>
-                  <p className="text-[10px] text-indigo-300">{s.desc}</p>
-                </div>
+        <div className="relative">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="text-white">
+              <span className="inline-flex items-center gap-2 glass-chip px-3 py-1 mb-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-300 live-dot" />
+                <span className="text-[11px] font-medium text-white/90 tracking-wide">Front Desk · Live</span>
+              </span>
+              <h1 className="text-2xl sm:text-[26px] font-extrabold flex items-center gap-2.5">
+                <FiLayers /> Reception Command Center
+              </h1>
+              <p className="text-white/75 text-sm mt-1">Check-in, registration, payments, vitals hand-off & live OPD queue</p>
+            </div>
+            <div className="glass-chip px-4 py-2 flex items-center gap-3 self-start">
+              <FiClock className="text-cyan-200" size={18} />
+              <div>
+                <p className="text-white font-bold text-lg tabular-nums tracking-wider leading-none">
+                  {clock.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                </p>
+                <p className="text-[10px] text-white/60 mt-0.5">{clock.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })}</p>
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          {/* Live queue KPIs */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 mt-5">
+            {[
+              { label: 'In Queue', value: queueStats.total, icon: FiUsers },
+              { label: 'Payment Due', value: queueStats.paymentPending, icon: FiDollarSign },
+              { label: 'Vitals Pending', value: queueStats.vitalsPending, icon: FiActivity },
+              { label: 'Waiting', value: queueStats.waiting, icon: FiClock },
+              { label: 'In Consult', value: queueStats.inConsult, icon: FiZap },
+              { label: 'Completed', value: queueStats.completed, icon: FiCheckCircle },
+            ].map(k => (
+              <div key={k.label} className="glass-chip px-3 py-2.5">
+                <div className="flex items-center gap-1 text-white/70 mb-0.5">
+                  <k.icon size={12} /><span className="text-[9px] uppercase tracking-wide truncate">{k.label}</span>
+                </div>
+                <p className="text-xl font-extrabold text-white tabular-nums leading-none">{k.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Animated step progress */}
+          <div className="relative mt-7 hidden md:block">
+            <div className="absolute left-0 right-0 top-4 h-1 rounded-full bg-white/15" />
+            <div className="absolute left-0 top-4 h-1 rounded-full bg-gradient-to-r from-emerald-300 to-cyan-200 transition-all duration-500"
+                 style={{ width: `${((Math.min(activeStep, 3) - 1) / 2) * 100}%` }} />
+            <div className="relative flex items-start justify-between">
+              {[
+                { nr: 1, title: 'Check-In / Register', desc: 'Patient Arrival' },
+                { nr: 2, title: 'Doctor Selection', desc: 'Select Clinic' },
+                { nr: 3, title: 'Fee Settlement', desc: 'Collect Payment' },
+              ].map(s => {
+                const isCurrent = activeStep === s.nr;
+                const isDone = activeStep > s.nr;
+                return (
+                  <div key={s.nr} className="flex flex-col items-center gap-1.5 text-center" style={{ width: '33%' }}>
+                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all ${
+                      isCurrent ? 'bg-white text-indigo-700 border-white scale-110 shadow-lg animate-glow' :
+                      isDone ? 'bg-emerald-400 text-white border-emerald-400' :
+                      'bg-white/10 text-white/70 border-white/30'
+                    }`}>
+                      {isDone ? <FiCheck /> : s.nr}
+                    </div>
+                    <div className="leading-tight">
+                      <p className={`text-xs font-semibold ${isCurrent ? 'text-white' : 'text-white/70'}`}>{s.title}</p>
+                      <p className="text-[10px] text-white/50">{s.desc}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -784,62 +896,83 @@ export default function Receptionist() {
 
         {/* Live Queue Monitor (Right Side) */}
         <div className="space-y-4">
-          <div className="card">
-            <div className="flex items-center justify-between border-b pb-3 mb-3">
+          <div className="card !p-4">
+            <div className="flex items-center justify-between mb-3">
               <h3 className="font-bold text-gray-900 flex items-center gap-2">
-                <FiUsers className="text-indigo-600" /> Today's HMS Queue
+                <span className="w-8 h-8 rounded-xl flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg,#4338ca,#0e7490)' }}>
+                  <FiUsers size={15} />
+                </span>
+                Live OPD Queue
+                <span className="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">{queueStats.total}</span>
               </h3>
-              <button
-                onClick={fetchQueue}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
-              >
-                Refresh
+              <button onClick={fetchQueue} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                <FiRefreshCw size={12} /> Refresh
               </button>
+            </div>
+
+            {/* Search + status filter chips */}
+            <div className="relative mb-2.5">
+              <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
+              <input value={queueSearch} onChange={e => setQueueSearch(e.target.value)} placeholder="Search token, name or UHID…"
+                className="input-field !py-2 !pl-9 text-sm" />
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto custom-scroll pb-2 mb-1">
+              {[
+                { v: 'ALL', l: 'All' },
+                { v: 'ACTIVE', l: 'Active' },
+                { v: 'PAYMENT_PENDING', l: 'Payment' },
+                { v: 'WAITING_FOR_DOCTOR', l: 'Waiting' },
+                { v: 'IN_CONSULTATION', l: 'In Consult' },
+                { v: 'CONSULTATION_COMPLETED', l: 'Done' },
+              ].map(f => (
+                <button key={f.v} onClick={() => setQueueFilter(f.v)}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all ${queueFilter === f.v ? 'bg-indigo-600 text-white shadow' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+                  {f.l}
+                </button>
+              ))}
             </div>
 
             {loadingQueue ? (
               <div className="text-center py-6 text-sm text-gray-400">Loading queue...</div>
             ) : todayQueue.length === 0 ? (
               <p className="text-center text-sm text-gray-400 py-6">No active patients in queue today</p>
+            ) : filteredQueue.length === 0 ? (
+              <p className="text-center text-sm text-gray-400 py-6">No patients match this filter</p>
             ) : (
-              <div className="space-y-2.5 max-h-[480px] overflow-y-auto custom-scroll pr-1">
-                {todayQueue.map(apt => {
-                  let badgeColor = 'bg-gray-100 text-gray-600 border-gray-200';
-                  if (apt.status === 'PAYMENT_PENDING') badgeColor = 'bg-red-50 text-red-700 border-red-100';
-                  else if (apt.status === 'PAYMENT_COMPLETED' || apt.status === 'VITALS_PENDING') badgeColor = 'bg-yellow-50 text-yellow-700 border-yellow-100';
-                  else if (apt.status === 'VITALS_COMPLETED' || apt.status === 'WAITING_FOR_DOCTOR') badgeColor = 'bg-blue-50 text-blue-700 border-blue-100';
-                  else if (apt.status === 'IN_CONSULTATION') badgeColor = 'bg-purple-50 text-purple-700 border-purple-100';
-                  else if (apt.status === 'CONSULTATION_COMPLETED') badgeColor = 'bg-emerald-50 text-emerald-700 border-emerald-100';
-
+              <div className="scene-3d space-y-2.5 max-h-[460px] overflow-y-auto custom-scroll pr-1">
+                {filteredQueue.map((apt, idx) => {
+                  const cfg = QUEUE_STATUS[apt.status] || QUEUE_STATUS.REGISTERED;
                   const isCurrentSession = currentAppointment && currentAppointment._id === apt._id;
-
+                  const wait = estWait(apt._id);
                   return (
-                    <div
+                    <TiltCard
                       key={apt._id}
-                      className={`p-3 rounded-2xl border text-sm transition-all ${
-                        isCurrentSession ? 'border-indigo-500 bg-indigo-50/20 shadow-md ring-2 ring-indigo-500/10' : 'border-gray-100'
-                      }`}
+                      className={`module-3d !rounded-2xl p-3 text-sm animate-pop ${isCurrentSession ? 'ring-2 ring-indigo-500/40' : ''}`}
+                      style={{ '--m-soft': 'rgba(67,56,202,0.12)', '--m-shadow': 'rgba(67,56,202,0.4)', animationDelay: `${idx * 35}ms`, borderLeft: `4px solid ${cfg.dot}` }}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs font-bold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+                        <span className="font-mono text-xs font-bold text-white px-2 py-0.5 rounded-lg" style={{ background: 'linear-gradient(135deg,#4338ca,#0e7490)' }}>
                           T-{apt.tokenNumber || '0'}
                         </span>
-                        <span className={`text-[10px] font-bold uppercase border px-2 py-0.5 rounded-full ${badgeColor}`}>
-                          {apt.status?.replace('_', ' ')}
+                        <span className={`text-[10px] font-bold uppercase border px-2 py-0.5 rounded-full flex items-center gap-1 ${cfg.chip}`}>
+                          <span className="w-1.5 h-1.5 rounded-full" style={{ background: cfg.dot }} /> {cfg.label}
                         </span>
                       </div>
 
-                      <p className="font-bold text-gray-800 mt-2">{apt.patientId?.name || 'Patient'}</p>
-                      <p className="text-xs text-gray-500 font-mono mt-0.5">{apt.patientId?.patientId || 'UHID-NEW'}</p>
+                      <p className="font-bold text-gray-800 mt-2 depth-1">{apt.patientId?.name || 'Patient'}</p>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <p className="text-xs text-gray-500 font-mono">{apt.patientId?.patientId || 'UHID-NEW'}</p>
+                        {wait > 0 && (
+                          <span className="text-[10px] font-semibold text-amber-600 flex items-center gap-0.5">
+                            <FiClock size={10} /> ~{wait}m
+                          </span>
+                        )}
+                      </div>
 
-                      {/* Symptoms or chief complaints */}
                       {apt.chiefComplaint && (
-                        <p className="text-xs text-red-500 italic mt-1.5">
-                          Complaint: "{apt.chiefComplaint}"
-                        </p>
+                        <p className="text-xs text-red-500 italic mt-1.5 line-clamp-1">Complaint: "{apt.chiefComplaint}"</p>
                       )}
 
-                      {/* Action selector */}
                       <div className="mt-3 flex gap-1 bg-gray-50 p-1 rounded-xl">
                         <button
                           onClick={async () => {
@@ -886,7 +1019,7 @@ export default function Receptionist() {
                           Load
                         </button>
                       </div>
-                    </div>
+                    </TiltCard>
                   );
                 })}
               </div>
