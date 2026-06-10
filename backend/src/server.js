@@ -201,6 +201,9 @@ app.use('/api/sos', require('./routes/sos'));
 app.use('/api/attendance', require('./routes/attendance'));
 app.use('/api/payroll', require('./routes/payroll'));
 app.use('/api/reactivation', require('./routes/reactivation'));
+app.use('/api/reviews', require('./routes/reviews'));
+app.use('/api/website', require('./routes/website'));
+app.use('/api/sms', require('./routes/sms'));
 
 // Business Features
 app.use('/api/membership', require('./routes/membership'));

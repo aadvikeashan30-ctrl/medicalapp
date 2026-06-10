@@ -79,6 +79,9 @@ const moreNavGroups = [
       { path: '/health-packages',  icon: FiPackage,       label: 'Health Packages' },
       { path: '/referrals',        icon: FiGift,          label: 'Referral Program' },
       { path: '/campaigns',        icon: FiSend,          label: 'Campaigns' },
+      { path: '/sms-center',       icon: FiMessageCircle, label: 'SMS Center' },
+      { path: '/reviews',          icon: FiStar,          label: 'Google Reviews' },
+      { path: '/website-generator',icon: FiGlobe,         label: 'Website Generator' },
     ]
   },
   {

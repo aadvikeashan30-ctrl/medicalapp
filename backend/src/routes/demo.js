@@ -1769,5 +1769,79 @@ router.put('/reactivation/log/:id', demoOnly, (req, res) => {
   res.json({ _id: req.params.id, status: req.body.status });
 });
 
+// ==================== GOOGLE REVIEWS ====================
+const DEMO_REVIEWS = [
+  { _id: 'rv-1', patientName: 'Ramesh Kumar', patientPhone: '9876543210', channel: 'whatsapp', status: 'reviewed', rating: 5, requestedAt: new Date(Date.now() - 3 * 86400000).toISOString(), reviewedAt: new Date(Date.now() - 2 * 86400000).toISOString() },
+  { _id: 'rv-2', patientName: 'Priya Sharma', patientPhone: '9876543211', channel: 'whatsapp', status: 'opened', requestedAt: new Date(Date.now() - 86400000).toISOString() },
+  { _id: 'rv-3', patientName: 'Amit Patel', patientPhone: '9876543212', channel: 'sms', status: 'requested', requestedAt: new Date(Date.now() - 3600000).toISOString() }
+];
+router.get('/reviews', demoOnly, (req, res) => {
+  let list = [...DEMO_REVIEWS];
+  if (req.query.status) list = list.filter((r) => r.status === req.query.status);
+  res.json({ reviews: list, total: list.length });
+});
+router.get('/reviews/stats/summary', demoOnly, (req, res) => {
+  res.json({ requested: DEMO_REVIEWS.length, opened: DEMO_REVIEWS.filter((r) => ['opened', 'reviewed'].includes(r.status)).length, reviewed: DEMO_REVIEWS.filter((r) => r.status === 'reviewed').length, conversion: 33 });
+});
+router.post('/reviews/request', demoOnly, (req, res) => {
+  const r = { _id: `rv-${Date.now()}`, status: 'requested', channel: req.body.channel || 'whatsapp', requestedAt: new Date().toISOString(), ...req.body };
+  DEMO_REVIEWS.unshift(r);
+  res.status(201).json({ review: r, link: 'https://g.page/r/demo-clinic/review' });
+});
+router.post('/reviews/request/bulk', demoOnly, (req, res) => {
+  res.json({ sent: (req.body.patients || []).length, message: `Requested reviews from ${(req.body.patients || []).length} patient(s)` });
+});
+router.put('/reviews/:id', demoOnly, (req, res) => {
+  const r = DEMO_REVIEWS.find((x) => x._id === req.params.id);
+  if (!r) return res.status(404).json({ message: 'Not found' });
+  Object.assign(r, req.body);
+  res.json(r);
+});
+router.delete('/reviews/:id', demoOnly, (req, res) => {
+  const i = DEMO_REVIEWS.findIndex((x) => x._id === req.params.id);
+  if (i === -1) return res.status(404).json({ message: 'Not found' });
+  DEMO_REVIEWS.splice(i, 1);
+  res.json({ message: 'Removed' });
+});
+
+// ==================== DOCTOR WEBSITE ====================
+let DEMO_SITE = {
+  _id: 'site-1', slug: 'docclinic-demo', published: true, theme: 'teal',
+  headline: 'DocClinic Demo Centre', about: 'Dr. Demo Doctor — MBBS, MD, General Physician. Compassionate, evidence-based care for the whole family.',
+  services: ['General Consultation', 'Health Check-ups', 'Teleconsultation', 'Vaccinations'],
+  highlights: ['12+ years experience', 'Online booking available', '4.8\u2605 patient rating'],
+  bookingEnabled: true, googleReviewUrl: 'https://g.page/r/demo-clinic/review',
+  contact: { phone: '9000000000', email: 'demo@docclinic.com', address: '123 Health Street, Mumbai' }, views: 248
+};
+router.get('/website', demoOnly, (req, res) => res.json(DEMO_SITE));
+router.put('/website', demoOnly, (req, res) => { DEMO_SITE = { ...DEMO_SITE, ...req.body }; res.json(DEMO_SITE); });
+router.post('/website/publish', demoOnly, (req, res) => { DEMO_SITE.published = req.body.published !== false; res.json({ published: DEMO_SITE.published, slug: DEMO_SITE.slug, url: `/site/${DEMO_SITE.slug}` }); });
+router.get('/website/public/:slug', demoOnly, (req, res) => {
+  res.json({ site: DEMO_SITE, doctor: { name: 'Demo Doctor', specialty: 'general', qualification: 'MBBS, MD', clinicName: 'DocClinic Demo Centre', clinicCity: 'Mumbai', consultationFee: 500, workingHours: { start: '09:00', end: '18:00' } } });
+});
+
+// ==================== SMS ====================
+const DEMO_SMS_LOG = [
+  { to: '9876543210', body: 'Reminder: your appointment is tomorrow at 10:00 AM.', status: 'sent', at: new Date(Date.now() - 3600000).toISOString() },
+  { to: '9876543211', body: 'Your lab reports are ready for collection.', status: 'sent', at: new Date(Date.now() - 7200000).toISOString() }
+];
+router.get('/sms/templates', demoOnly, (req, res) => res.json({ templates: [
+  { key: 'reminder', label: 'Appointment Reminder', body: 'Hi {name}, reminder: your appointment is on {date} at {time}.' },
+  { key: 'follow-up', label: 'Follow-up', body: 'Hi {name}, it\u2019s time for your follow-up visit. Call us to book.' },
+  { key: 'reports-ready', label: 'Reports Ready', body: 'Hi {name}, your lab reports are ready.' },
+  { key: 'review', label: 'Review Request', body: 'Hi {name}, thanks for visiting! Review us: {link}' }
+] }));
+router.get('/sms/status', demoOnly, (req, res) => res.json({ configured: false, provider: 'stub', sender: 'CLINIC' }));
+router.get('/sms/log', demoOnly, (req, res) => res.json({ log: DEMO_SMS_LOG, configured: false }));
+router.post('/sms/send', demoOnly, (req, res) => {
+  DEMO_SMS_LOG.unshift({ to: req.body.to, body: req.body.body, status: 'sent', stubbed: true, at: new Date().toISOString() });
+  res.json({ message: 'SMS sent (simulated — no SMS provider configured)', result: { success: true, stubbed: true } });
+});
+router.post('/sms/send-bulk', demoOnly, (req, res) => {
+  const n = (req.body.recipients || []).length;
+  (req.body.recipients || []).forEach((to) => DEMO_SMS_LOG.unshift({ to, body: req.body.body, status: 'sent', at: new Date().toISOString() }));
+  res.json({ message: `Sent ${n}/${n} messages`, sent: n, total: n });
+});
+
 module.exports = router;
 module.exports.DEMO_USERS = DEMO_USERS;

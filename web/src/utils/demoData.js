@@ -273,6 +273,31 @@ export const DEMO_RESPONSES = {
     { _id: 'pat-2', name: 'Priya Sharma', phone: '9876543211', patientId: 'PAT-0002', lastVisit: new Date(Date.now() - 150 * 86400000).toISOString(), totalVisits: 5, totalBilled: 2500, daysSinceVisit: 150, lastOutreach: { status: 'contacted', at: new Date(Date.now() - 5 * 86400000).toISOString() } }
   ], total: 2, thresholdDays: 120 },
   '/reactivation/stats/summary': { lapsed: 2, contacted: 1, rebooked: 0, potentialRevenue: 1000 },
+  '/reviews': { reviews: [
+    { _id: 'rv-1', patientName: 'Ramesh Kumar', patientPhone: '9876543210', channel: 'whatsapp', status: 'reviewed', rating: 5, requestedAt: new Date(Date.now() - 3 * 86400000).toISOString() },
+    { _id: 'rv-2', patientName: 'Priya Sharma', patientPhone: '9876543211', channel: 'whatsapp', status: 'opened', requestedAt: new Date(Date.now() - 86400000).toISOString() },
+    { _id: 'rv-3', patientName: 'Amit Patel', patientPhone: '9876543212', channel: 'sms', status: 'requested', requestedAt: new Date(Date.now() - 3600000).toISOString() }
+  ], total: 3 },
+  '/reviews/stats/summary': { requested: 3, opened: 2, reviewed: 1, conversion: 33 },
+  '/website': {
+    _id: 'site-1', slug: 'docclinic-demo', published: true, theme: 'teal',
+    headline: 'DocClinic Demo Centre', about: 'Dr. Demo Doctor — MBBS, MD, General Physician. Compassionate, evidence-based care for the whole family.',
+    services: ['General Consultation', 'Health Check-ups', 'Teleconsultation', 'Vaccinations'],
+    highlights: ['12+ years experience', 'Online booking available', '4.8\u2605 patient rating'],
+    bookingEnabled: true, googleReviewUrl: 'https://g.page/r/demo-clinic/review',
+    contact: { phone: '9000000000', email: 'demo@docclinic.com', address: '123 Health Street, Mumbai' }, views: 248
+  },
+  '/sms/templates': { templates: [
+    { key: 'reminder', label: 'Appointment Reminder', body: 'Hi {name}, reminder: your appointment is on {date} at {time}.' },
+    { key: 'follow-up', label: 'Follow-up', body: 'Hi {name}, it\u2019s time for your follow-up visit. Call us to book.' },
+    { key: 'reports-ready', label: 'Reports Ready', body: 'Hi {name}, your lab reports are ready.' },
+    { key: 'review', label: 'Review Request', body: 'Hi {name}, thanks for visiting! Review us: {link}' }
+  ] },
+  '/sms/status': { configured: false, provider: 'stub', sender: 'CLINIC' },
+  '/sms/log': { log: [
+    { to: '9876543210', body: 'Reminder: your appointment is tomorrow at 10:00 AM.', status: 'sent', at: new Date(Date.now() - 3600000).toISOString() },
+    { to: '9876543211', body: 'Your lab reports are ready for collection.', status: 'sent', at: new Date(Date.now() - 7200000).toISOString() }
+  ], configured: false },
   '/doctor/slot-plan': {
     total: 5,
     morningBlock: { label: 'Short / virtual follow-ups (AM)', count: 2, items: [{ patient: 'Priya Sharma', type: 'follow-up', mode: 'video', duration: 15, suggestedSlot: '09:00' }, { patient: 'Ramesh Kumar', type: 'follow-up', mode: 'phone', duration: 10, suggestedSlot: '09:15' }] },
@@ -451,6 +476,16 @@ export function getDemoResponse(url) {
   if (cleanPath.includes('reactivation')) {
     if (cleanPath.includes('stats')) return DEMO_RESPONSES['/reactivation/stats/summary'];
     return DEMO_RESPONSES['/reactivation/lapsed'];
+  }
+  if (cleanPath.includes('reviews')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/reviews/stats/summary'];
+    return DEMO_RESPONSES['/reviews'];
+  }
+  if (cleanPath.includes('website')) return DEMO_RESPONSES['/website'];
+  if (cleanPath.includes('sms')) {
+    if (cleanPath.includes('template')) return DEMO_RESPONSES['/sms/templates'];
+    if (cleanPath.includes('status')) return DEMO_RESPONSES['/sms/status'];
+    return DEMO_RESPONSES['/sms/log'];
   }
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];
