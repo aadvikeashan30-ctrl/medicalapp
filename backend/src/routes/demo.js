@@ -1645,5 +1645,129 @@ router.get('/telemedicine/today', demoOnly, (req, res) => {
   res.json({ appointments: list, total: list.length, completed: 0, pending: list.length, inProgress: 0 });
 });
 
+// ==================== EMERGENCY SOS ====================
+const DEMO_SOS = [
+  { _id: 'sos-1', patientName: 'Ramesh Kumar', patientPhone: '9876543210', type: 'cardiac', location: 'Home - 12 MG Road', status: 'active', note: 'Severe chest pain, sweating', createdAt: new Date(Date.now() - 8 * 60000).toISOString() },
+  { _id: 'sos-2', patientName: 'Sunita Reddy', patientPhone: '9876543213', type: 'fall', location: 'Bathroom', status: 'dispatched', note: 'Elderly fall, conscious', createdAt: new Date(Date.now() - 40 * 60000).toISOString() }
+];
+router.get('/sos', demoOnly, (req, res) => {
+  let list = [...DEMO_SOS];
+  if (req.query.status) list = list.filter((s) => s.status === req.query.status);
+  res.json({ alerts: list, total: list.length });
+});
+router.get('/sos/stats/summary', demoOnly, (req, res) => {
+  res.json({ active: DEMO_SOS.filter((s) => ['active', 'acknowledged', 'dispatched'].includes(s.status)).length, resolved: DEMO_SOS.filter((s) => s.status === 'resolved').length, total: DEMO_SOS.length });
+});
+router.post('/sos', demoOnly, (req, res) => {
+  const a = { _id: `sos-${Date.now()}`, status: 'active', createdAt: new Date().toISOString(), ...req.body };
+  DEMO_SOS.unshift(a);
+  res.status(201).json(a);
+});
+router.put('/sos/:id/status', demoOnly, (req, res) => {
+  const a = DEMO_SOS.find((x) => x._id === req.params.id);
+  if (!a) return res.status(404).json({ message: 'Alert not found' });
+  a.status = req.body.status;
+  res.json(a);
+});
+router.delete('/sos/:id', demoOnly, (req, res) => {
+  const i = DEMO_SOS.findIndex((x) => x._id === req.params.id);
+  if (i === -1) return res.status(404).json({ message: 'Alert not found' });
+  DEMO_SOS.splice(i, 1);
+  res.json({ message: 'Alert removed' });
+});
+
+// ==================== STAFF ATTENDANCE ====================
+const DEMO_ATT = [
+  { _id: 'att-1', staffName: 'Receptionist Mary', role: 'receptionist', date: new Date().toISOString().slice(0, 10), checkIn: new Date(new Date().setHours(9, 5)).toISOString(), status: 'on-duty', hours: 0 },
+  { _id: 'att-2', staffName: 'Nurse Nancy', role: 'nurse', date: new Date().toISOString().slice(0, 10), checkIn: new Date(new Date().setHours(8, 50)).toISOString(), checkOut: new Date(new Date().setHours(13, 0)).toISOString(), status: 'present', hours: 4.2 },
+  { _id: 'att-3', staffName: 'Lab Tech Raj', role: 'staff', date: new Date().toISOString().slice(0, 10), status: 'leave', hours: 0 }
+];
+router.get('/attendance', demoOnly, (req, res) => {
+  let list = [...DEMO_ATT];
+  if (req.query.date) list = list.filter((r) => r.date === req.query.date);
+  res.json({ records: list, total: list.length });
+});
+router.get('/attendance/stats/summary', demoOnly, (req, res) => {
+  res.json({ date: new Date().toISOString().slice(0, 10), present: 2, onDuty: 1, leave: 1, total: DEMO_ATT.length });
+});
+router.post('/attendance/check-in', demoOnly, (req, res) => {
+  const r = { _id: `att-${Date.now()}`, staffName: req.body.staffName, role: req.body.role || 'staff', date: new Date().toISOString().slice(0, 10), checkIn: new Date().toISOString(), status: 'on-duty', hours: 0 };
+  DEMO_ATT.unshift(r);
+  res.status(201).json(r);
+});
+router.post('/attendance/:id/check-out', demoOnly, (req, res) => {
+  const r = DEMO_ATT.find((x) => x._id === req.params.id);
+  if (!r) return res.status(404).json({ message: 'Record not found' });
+  r.checkOut = new Date().toISOString();
+  r.hours = 6.5; r.status = 'present';
+  res.json(r);
+});
+router.post('/attendance/mark', demoOnly, (req, res) => {
+  const r = { _id: `att-${Date.now()}`, staffName: req.body.staffName, role: req.body.role || 'staff', date: req.body.date || new Date().toISOString().slice(0, 10), status: req.body.status, hours: 0 };
+  DEMO_ATT.unshift(r);
+  res.json(r);
+});
+router.delete('/attendance/:id', demoOnly, (req, res) => {
+  const i = DEMO_ATT.findIndex((x) => x._id === req.params.id);
+  if (i === -1) return res.status(404).json({ message: 'Record not found' });
+  DEMO_ATT.splice(i, 1);
+  res.json({ message: 'Record removed' });
+});
+
+// ==================== PAYROLL ====================
+const monthNow = new Date().toISOString().slice(0, 7);
+const DEMO_PAY = [
+  { _id: 'pay-1', staffName: 'Receptionist Mary', role: 'receptionist', month: monthNow, baseSalary: 22000, allowances: 2000, deductions: 1000, daysPresent: 24, netPay: 23000, status: 'paid' },
+  { _id: 'pay-2', staffName: 'Nurse Nancy', role: 'nurse', month: monthNow, baseSalary: 28000, allowances: 3000, deductions: 1500, daysPresent: 25, netPay: 29500, status: 'approved' },
+  { _id: 'pay-3', staffName: 'Lab Tech Raj', role: 'staff', month: monthNow, baseSalary: 24000, allowances: 1500, deductions: 800, daysPresent: 22, netPay: 24700, status: 'draft' }
+];
+router.get('/payroll', demoOnly, (req, res) => {
+  let list = [...DEMO_PAY];
+  if (req.query.status) list = list.filter((p) => p.status === req.query.status);
+  res.json({ slips: list, total: list.length });
+});
+router.get('/payroll/stats/summary', demoOnly, (req, res) => {
+  res.json({ month: monthNow, totalPayout: DEMO_PAY.reduce((s, p) => s + p.netPay, 0), paid: DEMO_PAY.filter((p) => p.status === 'paid').length, pending: DEMO_PAY.filter((p) => p.status !== 'paid').length, count: DEMO_PAY.length });
+});
+router.post('/payroll', demoOnly, (req, res) => {
+  const net = (Number(req.body.baseSalary) || 0) + (Number(req.body.allowances) || 0) - (Number(req.body.deductions) || 0);
+  const p = { _id: `pay-${Date.now()}`, status: 'draft', daysPresent: req.body.daysPresent || 0, ...req.body, netPay: net };
+  DEMO_PAY.unshift(p);
+  res.status(201).json(p);
+});
+router.put('/payroll/:id', demoOnly, (req, res) => {
+  const p = DEMO_PAY.find((x) => x._id === req.params.id);
+  if (!p) return res.status(404).json({ message: 'Slip not found' });
+  Object.assign(p, req.body);
+  p.netPay = (Number(p.baseSalary) || 0) + (Number(p.allowances) || 0) - (Number(p.deductions) || 0);
+  res.json(p);
+});
+router.delete('/payroll/:id', demoOnly, (req, res) => {
+  const i = DEMO_PAY.findIndex((x) => x._id === req.params.id);
+  if (i === -1) return res.status(404).json({ message: 'Slip not found' });
+  DEMO_PAY.splice(i, 1);
+  res.json({ message: 'Slip removed' });
+});
+
+// ==================== PATIENT REACTIVATION ====================
+router.get('/reactivation/lapsed', demoOnly, (req, res) => {
+  res.json({ patients: [
+    { _id: 'pat-5', name: 'Vikram Singh', phone: '9876543214', patientId: 'PAT-0005', lastVisit: new Date(Date.now() - 200 * 86400000).toISOString(), totalVisits: 2, totalBilled: 1000, daysSinceVisit: 200, lastOutreach: null },
+    { _id: 'pat-2', name: 'Priya Sharma', phone: '9876543211', patientId: 'PAT-0002', lastVisit: new Date(Date.now() - 150 * 86400000).toISOString(), totalVisits: 5, totalBilled: 2500, daysSinceVisit: 150, lastOutreach: { status: 'contacted', at: new Date(Date.now() - 5 * 86400000).toISOString() } }
+  ], total: 2, thresholdDays: 120 });
+});
+router.get('/reactivation/stats/summary', demoOnly, (req, res) => {
+  res.json({ lapsed: 2, contacted: 1, rebooked: 0, potentialRevenue: 1000 });
+});
+router.post('/reactivation/reach-out', demoOnly, (req, res) => {
+  res.status(201).json({ _id: `rl-${Date.now()}`, patientId: req.body.patientId, status: 'contacted', channel: req.body.channel || 'whatsapp', contactedAt: new Date().toISOString() });
+});
+router.post('/reactivation/reach-out/bulk', demoOnly, (req, res) => {
+  res.json({ sent: (req.body.patientIds || []).length, message: `Reached out to ${(req.body.patientIds || []).length} patient(s)` });
+});
+router.put('/reactivation/log/:id', demoOnly, (req, res) => {
+  res.json({ _id: req.params.id, status: req.body.status });
+});
+
 module.exports = router;
 module.exports.DEMO_USERS = DEMO_USERS;

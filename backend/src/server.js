@@ -197,6 +197,10 @@ app.use('/api/rpm', require('./routes/rpm'));
 app.use('/api/async-consults', require('./routes/asyncConsults'));
 app.use('/api/wearables', require('./routes/wearables'));
 app.use('/api/fhir', require('./routes/fhir'));
+app.use('/api/sos', require('./routes/sos'));
+app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/payroll', require('./routes/payroll'));
+app.use('/api/reactivation', require('./routes/reactivation'));
 
 // Business Features
 app.use('/api/membership', require('./routes/membership'));

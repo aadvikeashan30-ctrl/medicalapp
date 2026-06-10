@@ -46,6 +46,11 @@ import WearableMonitoring from './pages/WearableMonitoring';
 import Interoperability from './pages/Interoperability';
 import SmartScheduler from './pages/SmartScheduler';
 import TeleconsultHub from './pages/TeleconsultHub';
+import CommandCenter from './pages/CommandCenter';
+import EmergencySOS from './pages/EmergencySOS';
+import PatientReactivation from './pages/PatientReactivation';
+import StaffAttendance from './pages/StaffAttendance';
+import Payroll from './pages/Payroll';
 import Memberships from './pages/Memberships';
 import HealthPackages from './pages/HealthPackages';
 import Campaigns from './pages/Campaigns';
@@ -170,6 +175,11 @@ export default function App() {
           <Route path="interoperability" element={<Interoperability />} />
           <Route path="smart-scheduler" element={<SmartScheduler />} />
           <Route path="teleconsult" element={<TeleconsultHub />} />
+          <Route path="command-center" element={<CommandCenter />} />
+          <Route path="emergency-sos" element={<EmergencySOS />} />
+          <Route path="reactivation" element={<PatientReactivation />} />
+          <Route path="attendance" element={<StaffAttendance />} />
+          <Route path="payroll" element={<Payroll />} />
           <Route path="memberships" element={<Memberships />} />
           <Route path="health-packages" element={<HealthPackages />} />
           <Route path="campaigns" element={<Campaigns />} />

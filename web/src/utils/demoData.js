@@ -251,6 +251,28 @@ export const DEMO_RESPONSES = {
   },
   '/wearables/stats/summary': { connected: 2, alerts: 1, total: 2 },
   '/fhir/metadata': { resourceType: 'CapabilityStatement', status: 'active', fhirVersion: '4.0.1', format: ['json'], publisher: 'DocClinic Pro', externalServer: null, rest: [{ mode: 'server', resource: [{ type: 'Patient' }, { type: 'Appointment' }, { type: 'MedicationRequest' }] }] },
+  '/sos': { alerts: [
+    { _id: 'sos-1', patientName: 'Ramesh Kumar', patientPhone: '9876543210', type: 'cardiac', location: 'Home - 12 MG Road', status: 'active', note: 'Severe chest pain', createdAt: new Date(Date.now() - 8 * 60000).toISOString() },
+    { _id: 'sos-2', patientName: 'Sunita Reddy', patientPhone: '9876543213', type: 'fall', location: 'Bathroom', status: 'dispatched', note: 'Elderly fall, conscious', createdAt: new Date(Date.now() - 40 * 60000).toISOString() }
+  ], total: 2 },
+  '/sos/stats/summary': { active: 2, resolved: 0, total: 2 },
+  '/attendance': { records: [
+    { _id: 'att-1', staffName: 'Receptionist Mary', role: 'receptionist', date: new Date().toISOString().slice(0, 10), checkIn: new Date(new Date().setHours(9, 5)).toISOString(), status: 'on-duty', hours: 0 },
+    { _id: 'att-2', staffName: 'Nurse Nancy', role: 'nurse', date: new Date().toISOString().slice(0, 10), checkIn: new Date(new Date().setHours(8, 50)).toISOString(), checkOut: new Date(new Date().setHours(13, 0)).toISOString(), status: 'present', hours: 4.2 },
+    { _id: 'att-3', staffName: 'Lab Tech Raj', role: 'staff', date: new Date().toISOString().slice(0, 10), status: 'leave', hours: 0 }
+  ], total: 3 },
+  '/attendance/stats/summary': { date: new Date().toISOString().slice(0, 10), present: 2, onDuty: 1, leave: 1, total: 3 },
+  '/payroll': { slips: [
+    { _id: 'pay-1', staffName: 'Receptionist Mary', role: 'receptionist', month: new Date().toISOString().slice(0, 7), baseSalary: 22000, allowances: 2000, deductions: 1000, daysPresent: 24, netPay: 23000, status: 'paid' },
+    { _id: 'pay-2', staffName: 'Nurse Nancy', role: 'nurse', month: new Date().toISOString().slice(0, 7), baseSalary: 28000, allowances: 3000, deductions: 1500, daysPresent: 25, netPay: 29500, status: 'approved' },
+    { _id: 'pay-3', staffName: 'Lab Tech Raj', role: 'staff', month: new Date().toISOString().slice(0, 7), baseSalary: 24000, allowances: 1500, deductions: 800, daysPresent: 22, netPay: 24700, status: 'draft' }
+  ], total: 3 },
+  '/payroll/stats/summary': { month: new Date().toISOString().slice(0, 7), totalPayout: 77200, paid: 1, pending: 2, count: 3 },
+  '/reactivation/lapsed': { patients: [
+    { _id: 'pat-5', name: 'Vikram Singh', phone: '9876543214', patientId: 'PAT-0005', lastVisit: new Date(Date.now() - 200 * 86400000).toISOString(), totalVisits: 2, totalBilled: 1000, daysSinceVisit: 200, lastOutreach: null },
+    { _id: 'pat-2', name: 'Priya Sharma', phone: '9876543211', patientId: 'PAT-0002', lastVisit: new Date(Date.now() - 150 * 86400000).toISOString(), totalVisits: 5, totalBilled: 2500, daysSinceVisit: 150, lastOutreach: { status: 'contacted', at: new Date(Date.now() - 5 * 86400000).toISOString() } }
+  ], total: 2, thresholdDays: 120 },
+  '/reactivation/stats/summary': { lapsed: 2, contacted: 1, rebooked: 0, potentialRevenue: 1000 },
   '/doctor/slot-plan': {
     total: 5,
     morningBlock: { label: 'Short / virtual follow-ups (AM)', count: 2, items: [{ patient: 'Priya Sharma', type: 'follow-up', mode: 'video', duration: 15, suggestedSlot: '09:00' }, { patient: 'Ramesh Kumar', type: 'follow-up', mode: 'phone', duration: 10, suggestedSlot: '09:15' }] },
@@ -414,6 +436,22 @@ export function getDemoResponse(url) {
   }
   if (cleanPath.includes('slot-plan')) return DEMO_RESPONSES['/doctor/slot-plan'];
   if (cleanPath.includes('fhir')) return DEMO_RESPONSES['/fhir/metadata'];
+  if (cleanPath.includes('sos')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/sos/stats/summary'];
+    return DEMO_RESPONSES['/sos'];
+  }
+  if (cleanPath.includes('attendance')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/attendance/stats/summary'];
+    return DEMO_RESPONSES['/attendance'];
+  }
+  if (cleanPath.includes('payroll')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/payroll/stats/summary'];
+    return DEMO_RESPONSES['/payroll'];
+  }
+  if (cleanPath.includes('reactivation')) {
+    if (cleanPath.includes('stats')) return DEMO_RESPONSES['/reactivation/stats/summary'];
+    return DEMO_RESPONSES['/reactivation/lapsed'];
+  }
   if (cleanPath.includes('revenue')) return DEMO_RESPONSES['/billing/revenue/summary'];
   if (cleanPath.includes('billing')) return DEMO_RESPONSES['/billing'];
   if (cleanPath.includes('appointment')) return DEMO_RESPONSES['/appointments'];

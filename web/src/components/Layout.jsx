@@ -9,7 +9,8 @@ import {
   FiEdit3, FiAward, FiGift, FiSend, FiStar,
   FiTrendingUp, FiMapPin, FiDatabase, FiGlobe,
   FiChevronDown, FiList, FiCamera, FiWifi,
-  FiInbox, FiVideo, FiZap, FiWatch, FiShare2
+  FiInbox, FiVideo, FiZap, FiWatch, FiShare2,
+  FiGrid, FiAlertOctagon, FiRefreshCw, FiUserCheck
 } from 'react-icons/fi';
 import { clearSession, getUser } from '../utils/auth';
 import NotificationCenter from './NotificationCenter';
@@ -18,6 +19,7 @@ import AccessibilityWidget from './AccessibilityWidget';
 /* ─── Primary nav items (shown in top bar) ───────────────────────── */
 const primaryNav = [
   { path: '/',              icon: FiHome,      label: 'Dashboard',     end: true },
+  { path: '/command-center',icon: FiGrid,      label: 'Command Center' },
   { path: '/receptionist',  icon: FiUserPlus,  label: 'Receptionist' },
   { path: '/nurse',         icon: FiActivity,  label: 'Nurse Station' },
   { path: '/patients',      icon: FiUsers,     label: 'Patients' },
@@ -40,6 +42,7 @@ const moreNavGroups = [
       { path: '/async-consults',   icon: FiInbox,         label: 'Async Consultations' },
       { path: '/smart-scheduler',  icon: FiZap,           label: 'Smart Day Planner' },
       { path: '/waitlist',         icon: FiClock,         label: 'Waitlist Auto-Fill' },
+      { path: '/emergency-sos',    icon: FiAlertOctagon,  label: 'Emergency SOS' },
       { path: '/patient-insights', icon: FiTrendingUp,    label: 'Patient Insights' },
       { path: '/health-records',   icon: FiHeart,         label: 'Health Records' },
       { path: '/care-pathways',    icon: FiList,          label: 'Care Pathways' },
@@ -71,6 +74,7 @@ const moreNavGroups = [
       { path: '/revenue-routing',  icon: FiTrendingUp,    label: 'Revenue Routing' },
       { path: '/insurance',        icon: FiShield,        label: 'Insurance Desk' },
       { path: '/rpm',              icon: FiWifi,          label: 'RPM Reimbursement' },
+      { path: '/reactivation',     icon: FiRefreshCw,     label: 'Patient Reactivation' },
       { path: '/memberships',      icon: FiAward,         label: 'Memberships' },
       { path: '/health-packages',  icon: FiPackage,       label: 'Health Packages' },
       { path: '/referrals',        icon: FiGift,          label: 'Referral Program' },
@@ -87,6 +91,8 @@ const moreNavGroups = [
       { path: '/wearables',       icon: FiWatch,         label: 'Wearable Monitoring' },
       { path: '/interoperability',icon: FiShare2,        label: 'FHIR Interoperability' },
       { path: '/branches',        icon: FiMapPin,        label: 'Branches & Team' },
+      { path: '/attendance',      icon: FiUserCheck,     label: 'Staff Attendance' },
+      { path: '/payroll',         icon: FiDollarSign,    label: 'Payroll' },
       { path: '/audit-logs',      icon: FiDatabase,      label: 'Audit & Backup' },
     ]
   },
