@@ -162,7 +162,19 @@ export default function Patients() {
   const { data, loading, error, refetch } = useApi(url);
   const patients = data?.patients || [];
 
-  // Live KPIs from the loaded list
+  // Client-side filtering (works in demo mode + as a safety net when the
+  // API doesn't honour the search query). Matches name, phone & patient ID.
+  const visiblePatients = useMemo(() => {
+    const q = debounced.trim().toLowerCase();
+    if (!q) return patients;
+    return patients.filter((p) =>
+      [p.name, p.phone, p.email, p.patientId, p.city]
+        .filter(Boolean)
+        .some((f) => String(f).toLowerCase().includes(q))
+    );
+  }, [patients, debounced]);
+
+  // Live KPIs from the full loaded list
   const kpis = useMemo(() => {
     const now = new Date();
     const som = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -323,20 +335,22 @@ export default function Patients() {
 
       {loading ? (
         <Loader label="Loading patients..." />
-      ) : patients.length === 0 ? (
+      ) : visiblePatients.length === 0 ? (
         <EmptyState
           icon={FiUsers}
           title={debounced ? 'No matching patients' : 'No patients yet'}
           message={
             debounced
-              ? 'Try a different search term.'
+              ? `No patients match "${debounced}". Try a different name, phone, or ID.`
               : 'Click "Add New Patient" to register your first patient.'
           }
-          action={<button onClick={openAdd} className="btn-primary text-sm">Add Patient</button>}
+          action={debounced
+            ? <button onClick={() => setSearch('')} className="btn-secondary text-sm">Clear search</button>
+            : <button onClick={openAdd} className="btn-primary text-sm">Add Patient</button>}
         />
       ) : (
         <div className="scene-3d grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {patients.map((p, idx) => (
+          {visiblePatients.map((p, idx) => (
             <PatientCard
               key={p._id}
               p={p}
