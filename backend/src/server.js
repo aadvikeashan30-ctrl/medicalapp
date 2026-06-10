@@ -163,6 +163,8 @@ app.use('/api/billing', require('./routes/billing'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/whatsapp', require('./routes/whatsapp'));
 app.use('/api/medicines', require('./routes/medicines'));
+app.use('/api/pharmacy', require('./routes/pharmacy'));
+app.use('/api/equipment', require('./routes/equipment'));
 app.use('/api/labtests', require('./routes/labtests'));
 app.use('/api/expenses', require('./routes/expenses'));
 app.use('/api/portal', require('./routes/portal'));

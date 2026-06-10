@@ -364,7 +364,60 @@ export const DEMO_RESPONSES = {
     ],
     warnings: [], advice: 'Rest, hydration, steam inhalation.', provider: 'demo'
   },
-  '/notifications': []
+  '/notifications': [],
+  '/pharmacy': {
+    items: [
+      { _id: 'ph-1', name: 'Paracetamol', strength: '500mg', form: 'tablet', category: 'Analgesic', manufacturer: 'Cipla', unitsPerStrip: 10, reorderLevel: 100, rackLocation: 'A1', barcode: '8901234500011', batchNo: 'PCM2401', totalQuantity: 480, totalStrips: 48, looseUnits: 0, nearestExpiry: new Date(Date.now() + 220 * 86400000).toISOString(), purchasePrice: 1.2, sellingPrice: 2, stockValue: 960, batches: [], flags: { expired: false, nearExpiry: false, outOfStock: false, lowStock: false } },
+      { _id: 'ph-2', name: 'Amoxicillin', strength: '500mg', form: 'capsule', category: 'Antibiotic', manufacturer: 'Sun Pharma', unitsPerStrip: 10, reorderLevel: 100, rackLocation: 'B3', barcode: '8901234500028', batchNo: 'AMX2312', totalQuantity: 60, totalStrips: 6, looseUnits: 0, nearestExpiry: new Date(Date.now() + 45 * 86400000).toISOString(), purchasePrice: 4.5, sellingPrice: 7, stockValue: 420, batches: [], flags: { expired: false, nearExpiry: true, outOfStock: false, lowStock: true } },
+      { _id: 'ph-3', name: 'Metformin', strength: '500mg', form: 'tablet', category: 'Antidiabetic', manufacturer: 'USV', unitsPerStrip: 15, reorderLevel: 90, rackLocation: 'C2', barcode: '8901234500035', batchNo: 'MET2402', totalQuantity: 300, totalStrips: 20, looseUnits: 0, nearestExpiry: new Date(Date.now() + 400 * 86400000).toISOString(), purchasePrice: 1.8, sellingPrice: 3, stockValue: 900, batches: [], flags: { expired: false, nearExpiry: false, outOfStock: false, lowStock: false } },
+      { _id: 'ph-4', name: 'Azithromycin', strength: '250mg', form: 'tablet', category: 'Antibiotic', manufacturer: 'Alkem', unitsPerStrip: 6, reorderLevel: 60, rackLocation: 'B1', barcode: '8901234500042', batchNo: 'AZI2305', totalQuantity: 0, totalStrips: 0, looseUnits: 0, nearestExpiry: null, purchasePrice: 9, sellingPrice: 14, stockValue: 0, batches: [], flags: { expired: false, nearExpiry: false, outOfStock: true, lowStock: false } },
+      { _id: 'ph-5', name: 'Cetirizine', strength: '10mg', form: 'tablet', category: 'Antihistamine', manufacturer: 'Dr Reddy', unitsPerStrip: 10, reorderLevel: 80, rackLocation: 'A4', barcode: '8901234500059', batchNo: 'CET2210', totalQuantity: 120, totalStrips: 12, looseUnits: 0, nearestExpiry: new Date(Date.now() - 10 * 86400000).toISOString(), purchasePrice: 0.8, sellingPrice: 1.5, stockValue: 180, batches: [], flags: { expired: true, nearExpiry: false, outOfStock: false, lowStock: false } }
+    ],
+    total: 5
+  },
+  '/pharmacy/stats/summary': { totalItems: 5, stockValue: 2460, outOfStock: 1, lowStock: 1, nearExpiry: 1, expired: 1 },
+  '/pharmacy/revenue': {
+    dailyRevenue: 1840, dailyProfit: 720, monthRevenue: 28600, monthProfit: 11200, totalRevenue: 142000, margin: 39,
+    trend: Array.from({ length: 7 }).map((_, i) => ({ date: new Date(Date.now() - (6 - i) * 86400000).toISOString().slice(0, 10), revenue: [2100, 1850, 2400, 1700, 2950, 2200, 1840][i] })),
+    bestSellers: [
+      { name: 'Paracetamol', quantity: 320, revenue: 6400 },
+      { name: 'Metformin', quantity: 210, revenue: 6300 },
+      { name: 'Amoxicillin', quantity: 140, revenue: 4900 },
+      { name: 'Azithromycin', quantity: 90, revenue: 3200 },
+      { name: 'Cetirizine', quantity: 180, revenue: 2700 }
+    ]
+  },
+  '/pharmacy/purchase-suggestions': {
+    suggestions: [
+      { _id: 'ph-4', name: 'Azithromycin', strength: '250mg', currentStock: 0, minimumRequired: 60, suggestedPurchase: 120, estimatedCost: 1080 },
+      { _id: 'ph-2', name: 'Amoxicillin', strength: '500mg', currentStock: 60, minimumRequired: 100, suggestedPurchase: 140, estimatedCost: 630 }
+    ],
+    total: 2
+  },
+  '/pharmacy/alerts': {
+    outOfStock: [{ _id: 'ph-4', name: 'Azithromycin', strength: '250mg', totalQuantity: 0 }],
+    lowStock: [{ _id: 'ph-2', name: 'Amoxicillin', strength: '500mg', totalQuantity: 60 }],
+    nearExpiry: [{ _id: 'ph-2', name: 'Amoxicillin', strength: '500mg', nearestExpiry: new Date(Date.now() + 45 * 86400000).toISOString() }],
+    expired: [{ _id: 'ph-5', name: 'Cetirizine', strength: '10mg', nearestExpiry: new Date(Date.now() - 10 * 86400000).toISOString() }]
+  },
+  '/equipment': {
+    equipment: [
+      { _id: 'eq-1', name: 'Digital X-Ray Machine', category: 'Diagnostic Imaging', serialNo: 'XR-88421', model: 'DR-600', manufacturer: 'Siemens', location: 'Radiology Room', status: 'operational', purchaseDate: new Date(Date.now() - 700 * 86400000).toISOString(), purchasePrice: 1850000, serviceIntervalDays: 180, lastServiceDate: new Date(Date.now() - 60 * 86400000).toISOString(), nextServiceDate: new Date(Date.now() + 120 * 86400000).toISOString(), amc: { provider: 'Siemens Healthineers', contractNo: 'AMC-2024-XR', startDate: new Date(Date.now() - 200 * 86400000).toISOString(), endDate: new Date(Date.now() + 165 * 86400000).toISOString(), cost: 95000, active: true }, maintenanceLogs: [{ _id: 'ml-1', date: new Date(Date.now() - 60 * 86400000).toISOString(), type: 'preventive', description: 'Routine calibration', cost: 4500, technician: 'R. Mehta' }], notes: '' },
+      { _id: 'eq-2', name: 'Ultrasound Scanner', category: 'Diagnostic Imaging', serialNo: 'US-22190', model: 'Voluson E8', manufacturer: 'GE Healthcare', location: 'OPD-2', status: 'operational', purchaseDate: new Date(Date.now() - 500 * 86400000).toISOString(), purchasePrice: 1200000, serviceIntervalDays: 90, lastServiceDate: new Date(Date.now() - 80 * 86400000).toISOString(), nextServiceDate: new Date(Date.now() + 10 * 86400000).toISOString(), amc: { provider: 'GE Care', contractNo: 'AMC-GE-19', startDate: new Date(Date.now() - 300 * 86400000).toISOString(), endDate: new Date(Date.now() + 20 * 86400000).toISOString(), cost: 70000, active: true }, maintenanceLogs: [], notes: '' },
+      { _id: 'eq-3', name: 'Autoclave Sterilizer', category: 'Sterilization', serialNo: 'AC-1102', model: 'Tuttnauer 3870', manufacturer: 'Tuttnauer', location: 'Procedure Room', status: 'maintenance', purchaseDate: new Date(Date.now() - 900 * 86400000).toISOString(), purchasePrice: 320000, serviceIntervalDays: 120, lastServiceDate: new Date(Date.now() - 140 * 86400000).toISOString(), nextServiceDate: new Date(Date.now() - 20 * 86400000).toISOString(), amc: { provider: 'MedTech Services', contractNo: 'AMC-AC-07', startDate: new Date(Date.now() - 400 * 86400000).toISOString(), endDate: new Date(Date.now() - 15 * 86400000).toISOString(), cost: 18000, active: false }, maintenanceLogs: [], notes: 'Door seal replacement pending' }
+    ],
+    total: 3
+  },
+  '/equipment/stats/summary': { total: 3, operational: 2, maintenance: 1, outOfService: 0, serviceDue: 2, amcExpiring: 1, assetValue: 3370000 },
+  '/equipment/alerts': {
+    serviceDue: [
+      { _id: 'eq-2', name: 'Ultrasound Scanner', nextServiceDate: new Date(Date.now() + 10 * 86400000).toISOString() },
+      { _id: 'eq-3', name: 'Autoclave Sterilizer', nextServiceDate: new Date(Date.now() - 20 * 86400000).toISOString() }
+    ],
+    amcExpiring: [{ _id: 'eq-2', name: 'Ultrasound Scanner', amc: { endDate: new Date(Date.now() + 20 * 86400000).toISOString() } }],
+    amcExpired: [{ _id: 'eq-3', name: 'Autoclave Sterilizer', amc: { endDate: new Date(Date.now() - 15 * 86400000).toISOString() } }],
+    outOfService: [{ _id: 'eq-3', name: 'Autoclave Sterilizer', status: 'maintenance' }]
+  }
 };
 
 /**

@@ -11,6 +11,8 @@ import Appointments from './pages/Appointments';
 import Prescriptions from './pages/Prescriptions';
 import Billing from './pages/Billing';
 import Medicines from './pages/Medicines';
+import PharmacyInventory from './pages/PharmacyInventory';
+import EquipmentManagement from './pages/EquipmentManagement';
 import LabTests from './pages/LabTests';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
@@ -145,6 +147,8 @@ export default function App() {
           <Route path="prescriptions" element={<Prescriptions />} />
           <Route path="billing" element={<Billing />} />
           <Route path="medicines" element={<Medicines />} />
+          <Route path="pharmacy-inventory" element={<PharmacyInventory />} />
+          <Route path="equipment" element={<EquipmentManagement />} />
           <Route path="lab-tests" element={<LabTests />} />
           <Route path="expenses" element={<Expenses />} />
           <Route path="reports" element={<Reports />} />

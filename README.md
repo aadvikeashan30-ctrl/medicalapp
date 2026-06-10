@@ -1,6 +1,8 @@
-# DocClinic Pro - All-in-One Doctor Clinic Management App
+# DocClinic Pro - AI-Powered Healthcare Operating System
 
-> Smart, Affordable Clinic Management for Modern Doctors - Web + Mobile
+> Not just clinic management — a complete AI-Powered Healthcare Operating System for Clinics, Doctors, Hospitals, Pharmacies, Laboratories, and Patients.
+>
+> Built to increase clinic revenue, reduce operational workload, improve patient retention, automate repetitive tasks, and improve patient safety — an ERP + CRM + EMR + Revenue Growth System in one platform.
 
 ## Features
 
@@ -182,6 +184,25 @@ docker compose up -d --build
 - `GET /api/medicines?search=&limit=` — search doctor's library
 - `POST /api/medicines` — add to library
 - `PUT /api/medicines/:id` / `DELETE /api/medicines/:id`
+
+### Smart Pharmacy (Inventory)
+- `GET /api/pharmacy?search=&filter=` — inventory with computed qty, strips, batch, expiry, prices and stock flags (`filter`: `low-stock` | `near-expiry` | `expired` | `out-of-stock`)
+- `GET /api/pharmacy/stats/summary` — item count, stock value, out-of-stock / low-stock / near-expiry / expired counts
+- `GET /api/pharmacy/alerts` — grouped out-of-stock, low-stock, near-expiry and expired items
+- `GET /api/pharmacy/purchase-suggestions` — smart reorder suggestions (current stock vs minimum required → suggested purchase qty + est. cost)
+- `GET /api/pharmacy/revenue` — daily/monthly sales, profit, margin, 7-day trend, best sellers
+- `POST /api/pharmacy` — add medicine (optionally with opening batch)
+- `POST /api/pharmacy/:id/batch` — add/restock a batch (purchase)
+- `POST /api/pharmacy/:id/sell` — dispense/sell with FEFO (first-expiry-first-out) auto stock deduction
+- `PUT /api/pharmacy/:id` / `DELETE /api/pharmacy/:id`
+
+### Equipment Management
+- `GET /api/equipment?search=&status=` — asset registry
+- `GET /api/equipment/stats/summary` — totals, operational/maintenance counts, service due, AMC expiring, asset value
+- `GET /api/equipment/alerts` — service due (30d), AMC expiring (30d), AMC expired, out-of-service
+- `POST /api/equipment` — register equipment (auto-schedules next service)
+- `POST /api/equipment/:id/maintenance` — log maintenance & auto-reschedule next service
+- `PUT /api/equipment/:id` / `DELETE /api/equipment/:id`
 
 ### Uploads
 - `POST /api/uploads` — `multipart/form-data` with `file` field. Returns `{ url, filename, size, mimetype }`. Limit 5 MB. Allowed: image/jpeg, png, webp, application/pdf.
